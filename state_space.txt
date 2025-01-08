@@ -1,0 +1,30 @@
+1. 20! / (20 - 12)! = 6.03 * 10^13
+2. 3^20 = 3.49*10^9
+3. (25 + 3 - 1)! / (25! * (3 - 1)! ) = 351
+4. 110! / (30! * (110 - 30)! ) + 110! / (31! * (110 - 31)! ) + 110! / (32! * (110 - 32)! ) = 8.33 * 10^27
+5. (26! / (26 - 7)!)^{-1}
+6. \sum_{r=15}^{45} (r + 2 - 1)! / (r! * (2 - 1)! ) = 961
+7. 
+
+Chips and Circuits
+
+Hoeveelheid gates, verbindingen tussen gates (nets), alle locaties van de gates en grootte (+ dimensie) van de grid, hoeveelheid verbindingen tussen de gates, lengte van de kabels tussen gates, hoeveelheid kruisingen (intersections).
+
+
+Aantal gates niet groter dan oppervlakte grid, locatie gates zijn uniek, alle gates zijn juist met elkaar verbonden (volgens de netlist), maximaal aantal kabels is de hele oppervlakte van de grid en de minimale afstand tussen alle gates is ook het minimale aantal kabels.
+
+
+3^{2rk - (r + k)} - 3^{N_{min}}, waar r = aantal rijen, k = aantal kolomen en N_min = minimale lengte van alle gate connecties (dus minimale aantal kabels voor een gegeven configuratie).
+N_min = \sum_{i, j} \sum_{k}^{dim} |(\mathbf{r_i} - \mathbf{r_j})_k|,
+waar i en j een combinatie uit de netlist is en de binnenste som alle componenten van de vector sommeert. (Dus in 2D is dit ∆x + ∆y van de twee gate coördinaten)
+
+
+Stel we hebben een 3x3 met gates op (0,0) en (2,2). Dan is de maximale bekabeling: 2*3*3 - (3 + 3) = 12 en de minimale afstand is 4. D
+De bovengrens zou dan volgens de formule zijn: 3^{12} - 3^{4-1} = 531 414.
+In dit voorbeeld hebben wij 11 mogelijke paden geteld. 
+De bovengrens is dus in iedergeval boven de werkelijke aantal opties, maar waarschijnlijk zouden er nog meer aannames in verwerkt kunnen worden om de bovengrens te verkleinen.
+
+
+
+Voor het voorbeeld van Chips & Circuits: r = 7, k = 8, N_{min} = 20, dus
+Bovengrens = 3^{2 * 7 * 8 - (7 + 8)} - 3^{20 - 1} ≈ 1.91 * 10^{46}
