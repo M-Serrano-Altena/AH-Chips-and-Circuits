@@ -3,6 +3,8 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import os
 
+os.chdir(os.path.dirname(__file__))
+
 def add_missing_extension(filename: str, extension: str):
     base, existing_extension = os.path.splitext(filename)
     if not existing_extension:
@@ -86,11 +88,8 @@ chips = Chips(r"gates&netlists/chip_0/print_0.csv")
 # for testing
 sub_optimal_wires = [
     [(1, 1), (1, 2), (1, 3), (1, 4), (1, 5), (1, 6)],
-    [(1, 6), (2, 6)],
-    [(2, 6), (2, 5)],
-    [(2, 5), (3, 5), (4, 5)],
-    [(4, 5), (4, 6), (4, 7)],
-    [(4, 7), (5, 7)],
+    [(1, 6), (2, 6), (2, 5), (3, 5), (4, 5), (4, 6)],
+    [(4, 6), (4, 7), (5, 7)],
     [(5, 7), (5, 6), (5, 5), (5, 4), (5, 3)],
     [(5, 3), (6, 3), (6, 2), (6,1), (6, 0)],
     [(6, 0), (5, 0), (4, 0), (3,0)],
