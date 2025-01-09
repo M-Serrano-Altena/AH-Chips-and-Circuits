@@ -2,6 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
 import os
+from wire import Wire
 
 os.chdir(os.path.dirname(__file__))
 
@@ -49,19 +50,27 @@ class Chip:
             matrix_coords = convert_to_matrix_coords(coords, grid_size_y)
             self.grid[matrix_coords] = 2
 
-        # a wire is a list of horizontal/vertical coordinates
-        self.wires: list[list[tuple]] = []
+        self.wires: list[Wire] = []
 
         self.netlist = pd.read_csv(filepath_netlist).to_dict(orient="records")
         self.netlist = [{list(dicts.values())[0]: list(dicts.values())[1]} for dicts in self.netlist]
         netlist_reverse = [{value: key for key, value in dicts.items()} for dicts in self.netlist]
-        self.netlist += netlist_reverse
+        self.netlist_double_sided = self.netlist + netlist_reverse
 
-        print(self.netlist)
+
+    def add_wire(self, wire_coord_list) -> None:
+        wire = Wire(wire_coord_list[0], wire_coord_list[-1])
+        wire.extend_coords(wire_coord_list)
+        self.wires.append(wire)
+
+    def add_wires(self, wires_coord_list) -> None:
+        for wire_coord_list in wires_coord_list:
+            self.add_wire(wire_coord_list)
+
 
     def get_intersection_coords(self):
         gate_coords = set(convert_to_matrix_coords(coords, matrix_y_size=self.grid_size[0]) for coords in self.gates.values())
-        wires_coords_set = [set(wire) for wire in self.wires]
+        wires_coords_set = [set(wire.coords) for wire in self.wires]
         shared_coords = set()
         for wire1 in wires_coords_set:
             for wire2 in wires_coords_set:
@@ -80,9 +89,18 @@ class Chip:
     
     @staticmethod
     def wires_in_collision(wire1, wire2):
-        for i in range(len(wire1) - 1):
-            for j in range(len(wire2) - 1):
-                if wire1[i] == wire2[j] and wire1[i + 1] == wire2[j + 1] or wire1[i + 1] == wire2[j] and wire1[i] == wire2[j + 1]:
+        for i in range(wire1.length - 1):
+            for j in range(wire2.length - 1):
+                wire1_coords1 = wire1.coords[i]
+                wire1_coords2 = wire1.coords[i + 1]
+
+                wire2_coords1 = wire2.coords[j]
+                wire2_coords2 = wire2.coords[j + 1]
+
+                # checks if subsequent coordinates in both wires are the same
+                if wire1_coords1 == wire2_coords1 and wire1_coords2 == wire2_coords2:
+                    return True
+                elif wire1_coords2 == wire2_coords1 and wire1_coords1 == wire2_coords2:
                     return True
                 
         return False
@@ -120,7 +138,7 @@ class Chip:
         # Plot the wires
         for wire in self.wires:
             # Unzip the wire path into rows and columns
-            rows, cols = zip(*wire)
+            rows, cols = zip(*wire.coords)
             plt.plot(cols, rows, color="blue", linewidth=5)
 
         if save_filename is not None:
@@ -159,7 +177,7 @@ collision_wires = [
     [(5, 3), (4, 3), (4, 4), (4, 5), (4, 6)]
 ]
 
-chips.wires = collision_wires
+chips.add_wires(collision_wires)
 
 print(chips.grid_has_wire_collision())
 print(chips.get_intersection_coords())
