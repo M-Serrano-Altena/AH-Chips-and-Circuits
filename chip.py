@@ -3,8 +3,11 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import os
 from wire import Wire
+from algorithm import cost_function
 
 os.chdir(os.path.dirname(__file__))
+
+OUTPUT_FOLDER = "output"
 
 def add_missing_extension(filename: str, extension: str):
     base, existing_extension = os.path.splitext(filename)
@@ -32,6 +35,9 @@ def convert_to_matrix_coords(coords, matrix_y_size):
 # Load data
 class Chip:
     def __init__(self, filepath_print, filepath_netlist):
+        self.chip_id = int(os.path.dirname(filepath_print)[-1])
+        self.net_id = int(os.path.splitext(filepath_netlist)[0][-1])
+
         self.gates = pd.read_csv(filepath_print)
         self.gates = self.gates.set_index("chip").to_dict(orient='split')
 
@@ -40,15 +46,8 @@ class Chip:
             chip_num: tuple(coords) for chip_num, coords in zip(self.gates["index"], self.gates["data"])
         }
 
-        grid_size_x = max(coords[0] for coords in self.gates.values()) + 2
-        grid_size_y = max(coords[1] for coords in self.gates.values()) + 2
-        self.grid_size = grid_size_y, grid_size_x
-
-        # 2D array where 0 is empty, 1 is a wire and 2 is a gate location
-        self.grid = np.zeros(self.grid_size, dtype=int)
-        for coords in self.gates.values():
-            matrix_coords = convert_to_matrix_coords(coords, grid_size_y)
-            self.grid[matrix_coords] = 2
+        self.grid_size_x = max(coords[0] for coords in self.gates.values()) + 2
+        self.grid_size_y = max(coords[1] for coords in self.gates.values()) + 2
 
         self.wires: list[Wire] = []
 
@@ -69,7 +68,7 @@ class Chip:
 
 
     def get_intersection_coords(self):
-        gate_coords = set(convert_to_matrix_coords(coords, matrix_y_size=self.grid_size[0]) for coords in self.gates.values())
+        gate_coords = set(self.gates.values())
         wires_coords_set = [set(wire.coords) for wire in self.wires]
         shared_coords = set()
         for wire1 in wires_coords_set:
@@ -118,35 +117,58 @@ class Chip:
         return False
                 
 
+    def calc_total_wire_cost(self) -> int:
+        tot_wire_length = sum(wire.length for wire in self.wires)
+        intersection_amount = self.get_wire_intersect_amount()
+        return cost_function(wire_length=tot_wire_length, intersect_amount=intersection_amount)
 
-    def show_grid(self, save_filename: str|None = None):
-        fig, ax = plt.subplots(figsize=(6, 6))
 
-        plt.xlim(-0.5, self.grid_size[1] - 0.5)
-        plt.ylim(-0.5, self.grid_size[0] - 0.5)
+    def show_grid(self, image_filename: str|None = None) -> None:
+        plt.xlim(-0.5, self.grid_size_x - 0.5)
+        plt.ylim(-0.5, self.grid_size_y - 0.5)
 
         plt.grid(visible=True, color="k", linestyle="-")
-        ax.invert_yaxis()  # To match matrix-style coordinates
 
         # Plot the chips
-        for chip, coords in self.gates.items():
-            matrix_coords = convert_to_matrix_coords(coords, matrix_y_size=self.grid_size[0])
-            y_coords, x_coords = matrix_coords
+        for chip, (x_coords, y_coords) in self.gates.items():
             plt.scatter(x_coords, y_coords, color="red", s=500, label=f"Chip {chip}")
             plt.text(x_coords, y_coords, str(chip), color="white", ha="center", va="center", fontsize=13)
 
         # Plot the wires
         for wire in self.wires:
             # Unzip the wire path into rows and columns
-            rows, cols = zip(*wire.coords)
-            plt.plot(cols, rows, color="blue", linewidth=5)
+            x_coords, y_coords = zip(*wire.coords)
+            plt.plot(x_coords, y_coords, color="blue", linewidth=5)
 
-        if save_filename is not None:
-            save_filename = add_missing_extension(save_filename, ".png")
-            print(save_filename)
-            plt.savefig(save_filename)
+        if image_filename is not None:
+            image_filename = add_missing_extension(image_filename, ".png")
+            image_filepath = os.path.join(OUTPUT_FOLDER, "img", image_filename)
+
+            plt.savefig(image_filepath)
 
         plt.show()
+
+
+    def save_output(self, output_filename="output") -> None:
+        netlist_tuple = [(gate1, gate2) for net_connection in self.netlist for gate1, gate2 in net_connection.items()]
+        wire_list = [wire.coords for wire in self.wires]
+
+        # put netlist and wire sequences in a pandas dataframe
+        output_df = pd.DataFrame({"net": pd.Series(netlist_tuple), "wires": pd.Series(wire_list)})
+        
+        # add footer row
+        files_used = f"chip_{self.chip_id}_net_{self.net_id}"
+        total_cost = self.calc_total_wire_cost()
+
+        output_df.loc[len(output_df)] = [files_used, total_cost]
+
+        print(output_df)
+        
+        output_filename = add_missing_extension(output_filename, ".csv")
+        output_filepath = os.path.join(OUTPUT_FOLDER, "csv", output_filename)
+
+        # convert pandas dataframe to csv file
+        output_df.to_csv(output_filepath, index=False) 
 
 
 base_path = r"gates&netlists/chip_0/"
@@ -157,29 +179,32 @@ chips = Chip(filepath_print, filepath_netlist)
 
 # for testing (wire = from gate to gate)
 sub_optimal_wires = [
-    [(1, 1), (1, 2), (1, 3), (1, 4), (1, 5), (1, 6)],
-    [(1, 6), (2, 6), (2, 5), (3, 5), (4, 5), (4, 6)],
-    [(4, 6), (4, 7), (5, 7), (5, 6), (5, 5), (5, 4), (5, 3)],
-    [(5, 3), (6, 3), (6, 2), (6, 1), (6, 0), (5, 0), (4, 0), (3, 0), (3, 1), (3, 2), (3, 3), (3, 4), (2, 4)],
-    [(2, 4), (2, 3), (2, 2), (2, 1), (1, 1)]
+    [(1, 5), (2, 5), (3, 5), (4, 5), (5, 5), (6, 5)],
+    [(6, 5), (6, 4), (5, 4), (5, 3), (5, 2), (6, 2)],
+    [(6, 2), (7, 2), (7, 1), (6, 1), (5, 1), (4, 1), (3, 1)],
+    [(3, 1), (3, 0), (2, 0), (1, 0), (0, 0), (0, 1), (0, 2), (0, 3), (1, 3), (2, 3), (3, 3), (4, 3), (4, 4)],
+    [(4, 4), (3, 4), (2, 4), (1, 4), (1, 5)]
 ]
 
+
 intersection_wires = [
-    [(1, 1), (1, 2), (1, 3), (1, 4), (1, 5), (1, 6)],
-    [(1, 6), (2, 6), (2, 5), (2, 4)],
-    [(2, 4), (1, 4), (0, 4), (0, 3), (1, 3), (2, 3), (3, 3), (3, 3), (4, 3), (5, 3)],
+    [(1, 5), (2, 5), (3, 5), (4, 5), (5, 5), (6, 5)],
+    [(6, 5), (6, 4), (5, 4), (4, 4)],
+    [(4, 4), (4, 3), (4, 2), (3, 2), (3, 3), (4, 3), (5, 3), (5, 3), (6, 3), (7, 3)]
 ]
 
 collision_wires = [
-    [(1, 1), (1, 2), (1, 3), (1, 4), (1, 5), (1, 6)],
-    [(1, 6), (2, 6), (2, 5), (2, 4)],
-    [(2, 4), (1, 4), (0, 4), (0, 3), (1, 3), (2, 3), (3, 3), (3, 3), (4, 3), (5, 3)],
-    [(5, 3), (4, 3), (4, 4), (4, 5), (4, 6)]
+    [(1, 5), (2, 5), (3, 5), (4, 5), (5, 5), (6, 5)],
+    [(6, 5), (6, 4), (5, 4), (4, 4)],
+    [(4, 4), (4, 3), (4, 2), (3, 2), (3, 3), (4, 3), (5, 3), (5, 3), (6, 3), (7, 3)],
+    [(7, 3), (6, 3), (6, 4), (6, 5), (6, 6)]
 ]
 
-chips.add_wires(collision_wires)
+chips.add_wires(sub_optimal_wires)
 
 print(chips.grid_has_wire_collision())
 print(chips.get_intersection_coords())
 
 chips.show_grid("test")
+
+chips.save_output()
