@@ -29,8 +29,8 @@ def convert_to_matrix_coords(coords, matrix_y_size):
     return matrix_y_size - 1 - y_coord, x_coord
 
 # Load data
-class Chips:
-    def __init__(self, filepath_print):
+class Chip:
+    def __init__(self, filepath_print, filepath_netlist):
         self.gates = pd.read_csv(filepath_print)
         self.gates = self.gates.set_index("chip").to_dict(orient='split')
 
@@ -51,6 +51,54 @@ class Chips:
 
         # a wire is a list of horizontal/vertical coordinates
         self.wires: list[list[tuple]] = []
+
+        self.netlist = pd.read_csv(filepath_netlist).to_dict(orient="records")
+        self.netlist = [{list(dicts.values())[0]: list(dicts.values())[1]} for dicts in self.netlist]
+        netlist_reverse = [{value: key for key, value in dicts.items()} for dicts in self.netlist]
+        self.netlist += netlist_reverse
+
+        print(self.netlist)
+
+    def get_intersection_coords(self):
+        gate_coords = set(convert_to_matrix_coords(coords, matrix_y_size=self.grid_size[0]) for coords in self.gates.values())
+        wires_coords_set = [set(wire) for wire in self.wires]
+        shared_coords = set()
+        for wire1 in wires_coords_set:
+            for wire2 in wires_coords_set:
+                if wire1 == wire2:
+                    continue
+
+                shared_coords |= wire1 & wire2
+
+        # exclude shared coords that correspond to gates
+        shared_coords -= gate_coords
+        return shared_coords
+
+    def get_wire_intersect_amount(self):
+        return len(self.get_intersection_coords())
+    
+    
+    @staticmethod
+    def wires_in_collision(wire1, wire2):
+        for i in range(len(wire1) - 1):
+            for j in range(len(wire2) - 1):
+                if wire1[i] == wire2[j] and wire1[i + 1] == wire2[j + 1] or wire1[i + 1] == wire2[j] and wire1[i] == wire2[j + 1]:
+                    return True
+                
+        return False
+
+    
+    def grid_has_wire_collision(self):
+        for i, wire1 in enumerate(self.wires):
+            for j, wire2 in enumerate(self.wires):
+                if i == j:
+                    continue
+
+                if self.wires_in_collision(wire1, wire2):
+                    return True
+                
+        return False
+                
 
 
     def show_grid(self, save_filename: str|None = None):
@@ -83,22 +131,37 @@ class Chips:
         plt.show()
 
 
-chips = Chips(r"gates&netlists/chip_0/print_0.csv")
+base_path = r"gates&netlists/chip_0/"
+filepath_print = os.path.join(base_path, "print_0.csv")
+filepath_netlist = os.path.join(base_path, "netlist_1.csv")
 
-# for testing
+chips = Chip(filepath_print, filepath_netlist)
+
+# for testing (wire = from gate to gate)
 sub_optimal_wires = [
     [(1, 1), (1, 2), (1, 3), (1, 4), (1, 5), (1, 6)],
     [(1, 6), (2, 6), (2, 5), (3, 5), (4, 5), (4, 6)],
-    [(4, 6), (4, 7), (5, 7)],
-    [(5, 7), (5, 6), (5, 5), (5, 4), (5, 3)],
-    [(5, 3), (6, 3), (6, 2), (6,1), (6, 0)],
-    [(6, 0), (5, 0), (4, 0), (3,0)],
-    [(3,0), (3, 1), (3, 2), (3,3), (3,4)],
-    [(3,4), (2,4)],
-    [(2,4), (2, 3), (2,2), (2,1)],
-    [(2,1), (1,1)]
+    [(4, 6), (4, 7), (5, 7), (5, 6), (5, 5), (5, 4), (5, 3)],
+    [(5, 3), (6, 3), (6, 2), (6, 1), (6, 0), (5, 0), (4, 0), (3, 0), (3, 1), (3, 2), (3, 3), (3, 4), (2, 4)],
+    [(2, 4), (2, 3), (2, 2), (2, 1), (1, 1)]
 ]
 
-chips.wires = sub_optimal_wires
+intersection_wires = [
+    [(1, 1), (1, 2), (1, 3), (1, 4), (1, 5), (1, 6)],
+    [(1, 6), (2, 6), (2, 5), (2, 4)],
+    [(2, 4), (1, 4), (0, 4), (0, 3), (1, 3), (2, 3), (3, 3), (3, 3), (4, 3), (5, 3)],
+]
+
+collision_wires = [
+    [(1, 1), (1, 2), (1, 3), (1, 4), (1, 5), (1, 6)],
+    [(1, 6), (2, 6), (2, 5), (2, 4)],
+    [(2, 4), (1, 4), (0, 4), (0, 3), (1, 3), (2, 3), (3, 3), (3, 3), (4, 3), (5, 3)],
+    [(5, 3), (4, 3), (4, 4), (4, 5), (4, 6)]
+]
+
+chips.wires = collision_wires
+
+print(chips.grid_has_wire_collision())
+print(chips.get_intersection_coords())
 
 chips.show_grid("test")
