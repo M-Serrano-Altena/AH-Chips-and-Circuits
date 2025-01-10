@@ -128,7 +128,7 @@ class Chip:
 
 
     def show_grid(self, image_filename: str|None = None) -> None:
-        camera_eye = dict(x=-1, y=-1, z=1)
+        camera_eye = dict(x=-1.3, y=-1.3, z=0.6)
 
         gates_x, gates_y, gates_z = zip(*self.gates.values())
         gates_plot = go.Scatter3d(x=gates_x, y=gates_y, z=gates_z, mode='markers', marker=dict(color='red', size=8), text=list(self.gates.keys()), textposition='top center', textfont=dict(size=100, color='black'), hovertemplate='Gate %{text}: (%{x}, %{y}, %{z})<extra></extra>', name='Gates')
@@ -139,15 +139,15 @@ class Chip:
             wire_x, wire_y, wire_z = zip(*wire.coords)
             wire_plot = go.Scatter3d(x=wire_x, y=wire_y, z=wire_z, mode='lines', line=dict(color='blue', width=3), name='Wires', showlegend=i == 0, hovertemplate=f'Wire {i + 1}: ' + '(%{x}, %{y}, %{z})<extra></extra>')
             data.append(wire_plot)
-            show_wire_legend = False
 
         fig = go.Figure(data=data)
 
         fig.update_layout(
             scene=dict(
-                xaxis_title='X Axis',
-                yaxis_title='Y Axis',
-                zaxis_title='Z Axis',
+            xaxis = dict(title='X Axis', range=[-0.5, self.grid_size_x - 1]),
+            yaxis = dict(title='Y Axis', range=[-0.5, self.grid_size_y - 1]),
+            zaxis = dict(title='Z Axis', range=[-0.5, self.grid_size_z - 1]),
+                aspectmode='cube',
                 camera=dict(
                     eye=camera_eye,  # Adjust the camera position
                     center=dict(x=0, y=0, z=0),
@@ -225,7 +225,15 @@ collision_wires = [
     [(7, 3, 0), (6, 3, 0), (6, 4, 0), (6, 5, 0), (6, 6, 0)]
 ]
 
-chips.add_wires(sub_optimal_wires)
+sub_optimal_wires_3D = [
+    [(1, 5, 0), (2, 5, 0), (3, 5, 0), (4, 5, 0), (5, 5, 0), (6, 5, 0)],
+    [(6, 5, 0), (6, 5, 1), (6, 4, 1), (5, 4, 1), (5, 3, 1), (5, 2, 1), (6, 2, 1), (6, 2, 0)],
+    [(6, 2, 0), (7, 2, 0), (7, 1, 0), (6, 1, 0), (5, 1, 0), (4, 1, 0), (3, 1, 0)],
+    [(3, 1, 0), (3, 0, 0), (2, 0, 0), (1, 0, 0), (0, 0, 0), (0, 1, 0), (0, 2, 0), (0, 3, 0), (1, 3, 0), (2, 3, 0), (3, 3, 0), (4, 3, 0), (4, 4, 0)],
+    [(4, 4, 0), (3, 4, 0), (2, 4, 0), (1, 4, 0), (1, 5, 0)]
+]
+
+chips.add_wires(sub_optimal_wires_3D)
 
 print(chips.grid_has_wire_collision())
 print(chips.get_intersection_coords())
