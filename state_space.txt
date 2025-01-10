@@ -28,3 +28,40 @@ De bovengrens is dus in iedergeval boven de werkelijke aantal opties, maar waars
 
 Voor het voorbeeld van Chips & Circuits: r = 7, k = 8, N_{min} = 20, dus
 Bovengrens = 3^{2 * 7 * 8 - (7 + 8)} - 3^{20 - 1} ≈ 1.91 * 10^{46}
+
+
+Statespace tekst verder uitgewerkt: 
+
+Het probleem: vind de optimale configuratie aan kabels (laagste kosten op basis van kosten kabel: 1; kosten kortsluiting: 300) die alle gates aan elkaar verbindt volgens de netlist (constraint optimization problem).
+
+Het lastige aan de statespace van dit probleem is dat wanneer we constraint versoepelen (kabels mogen over elkaar heenlopen) de statespace oneindig groot wordt, omdat er altijd een kabel aan elke configuratie kan worden toegevoegd.
+
+De aanname die wij hebben gedaan in het toch proberen te berekenen van de statespace is dat er een vaste dimensie is van de grid waarin de bekabeling zich moet bevinden: r = rijen, k = kolommen, dat de kabel elk van de punten op de grid raakt. Op deze manier weten we dat dit de maximale kabellengte is waarop elke gate met elk andere gate in verbinding kan staan, en dus dat er in deze maximale ruimte een geldige oplossing moet zijn te vinden. 
+
+Als we een kabel aanleggen kunnen we 3 richtingen kiezen, links, rechtdoor of rechts. Hierdoor bestaat de keuzeruimte uit drie, en de maximale lengte is wanneer op alle mogelijke plekken in de r x k grid er kabel ligt: dit is "kabel van rijen + kabel van kolommen" ofwel ((r-1)*k + (k-1)*r). Als we deze lengte hebben bereikt dan weten we zeker dat alle gates met elkaar verbonden zijn aangezien alles met elkaar verbonden is, en we weten ook zeker dat de kabel niet langer kan zijn dan deze lengte aangezien er dan kabels over hetzelfde lijnstuk lopen wat niet toegestaan is. Het aantal mogelijkheden van de legging van de kabel van maximale lengte is daarom: 3^((r-1)*k + (k-1)*r)
+
+Alleen de oplossing van het probleem hoeft niet perse een kabel te zijn van maximale lengte, hij kan ook 1, 2 of 10 kabelstukken korter zijn, hij kan zo kort zijn als de korste kabel configuratie mogelijk, dat is de delta's van de coördinaten van de verbonden gates bij elkaar opgeteld, de hypothetisch korst mogelijk (en waarschijnlijk onjuiste) oplossing van dit probleem. In deze span bevindt onze oplossing zich en dit is de totale statespace van dit probleem: \sum_{i=0}^{(r-1)*k + (k-1)*k - N_min} 3^((r-1)*k + (k-1)*r - i)
+
+Dat is dus de volgende reeks: 
+
+[/
+
+3^((r-1)*k + (k-1)*r) + 3^((r-1)*k + (k-1)*r - 1) + 3^((r-1)*k + (k-1)*r - 2) + ... 3^(N_min + 1) + 3^(N_min)
+
+/]
+
+Het is dus duidelijk dat wanneer de dimensies van de grid vergroot worden, de statespace gigantisch toeneemt:
+
+3x3 = 3^(2*3 + 2*3) + 3^(2*3 + 2*3 - 1) + 3^(2*3 + 2*3 - 2) + ... >= 767637
+3x4 = 3^(2*4 + 3*3) + 3^(2*4 + 3*3 - 1) + 3^(2*4 + 3*3 - 2) + ... >= 186535791
+4x4 = 3^(3*4 + 3*4) + 3^(3*4 + 3*4 - 1) + 3^(3*4 + 3*4 - 2) + ... >= 407953774917
+...
+7x8 = 3^(6*8 + 7*7) + 3^(6*8 + 7*7 - 1) + 3^(6*8 + 7*7 - 2) + ... >= 2.7571 * 10^46 (example question)
+...
+17 x 12 = 3^(16*12 + 17*11) + 3^(16*12 + 17*11 - 1) + 3^(16*12 + 17*11 - 2) + ... >= 9.7422 * 10^180 (Chip 1)
+...
+17 x 16 = 3^(16*16 + 17*15) + 3^(16*16 + 17*15 - 1) + 3^(16*16 + 17*15 - 2) + ... >= 9.3038 * 10^243 (Chip 2)
+
+
+Note: Deze berekeningen houden geen rekening met een statespace in 3D, dit zal voor een nog grotere statespace zorgen. 
+
