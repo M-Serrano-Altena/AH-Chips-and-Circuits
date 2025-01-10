@@ -1,6 +1,5 @@
 class Wire():
-
-    def __init__(self, gate1: tuple[int, int], gate2: tuple[int, int]):
+    def __init__(self, gate1: tuple[int, int, int], gate2: tuple[int, int, int]):
         self.gates = [gate1, gate2]
         self.coords: list[tuple] = [gate1, gate2]
 
@@ -18,10 +17,10 @@ class Wire():
         return len(self.coords) != len(set(self.coords))
     
     @staticmethod
-    def are_points_neighbours(coord1, coord2) -> bool:
+    def are_points_neighbours(coord1: tuple[int, int, int], coord2: tuple[int, int, int]) -> bool:
         """Checks if points are next to each other
         """
-        return abs(coord1[0] - coord2[0]) + abs(coord1[1] - coord2[1]) == 1
+        return sum(abs(coord1[i] - coord2[i]) for i in range(len(coord1))) == 1
         
     def is_wire_connected(self) -> bool:
         for i in range(len(self.coords) - 1):
@@ -31,7 +30,7 @@ class Wire():
         return True
     
 
-    def append_coords(self, coords: tuple[int, int]) -> None:
+    def append_coords(self, coords: tuple[int, int, int]) -> None:
         # don't add gate coords to the wire again
         if coords in self.gates:
             return
@@ -44,6 +43,6 @@ class Wire():
 
         return
     
-    def extend_coords(self, coords_list: list[tuple[int, int]]) -> None:
+    def extend_coords(self, coords_list: list[tuple[int, int, int]]) -> None:
         for coords in coords_list:
             self.append_coords(coords)

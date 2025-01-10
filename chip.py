@@ -1,5 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
+import plotly.graph_objs as go
+import plotly.io as pio
 import pandas as pd
 import os
 from wire import Wire
@@ -42,12 +44,13 @@ class Chip:
         self.gates = self.gates.set_index("chip").to_dict(orient='split')
 
         # dict with gate number as key, and coords as values
-        self.gates: dict[int, tuple[int, int]] = {
-            chip_num: tuple(coords) for chip_num, coords in zip(self.gates["index"], self.gates["data"])
+        self.gates: dict[int, tuple[int, int, int]] = {
+            chip_num: tuple(coords) + (0,) for chip_num, coords in zip(self.gates["index"], self.gates["data"])
         }
 
         self.grid_size_x = max(coords[0] for coords in self.gates.values()) + 2
         self.grid_size_y = max(coords[1] for coords in self.gates.values()) + 2
+        self.grid_size_z = 8
 
         self.wires: list[Wire] = []
 
@@ -80,6 +83,7 @@ class Chip:
 
         # exclude shared coords that correspond to gates
         shared_coords -= gate_coords
+        print("shared coords:", shared_coords)
         return shared_coords
 
     def get_wire_intersect_amount(self):
@@ -124,29 +128,50 @@ class Chip:
 
 
     def show_grid(self, image_filename: str|None = None) -> None:
-        plt.xlim(-0.5, self.grid_size_x - 0.5)
-        plt.ylim(-0.5, self.grid_size_y - 0.5)
+        camera_eye = dict(x=-1, y=-1, z=1)
 
-        plt.grid(visible=True, color="k", linestyle="-")
-
-        # Plot the chips
-        for chip, (x_coords, y_coords) in self.gates.items():
-            plt.scatter(x_coords, y_coords, color="red", s=500, label=f"Chip {chip}")
-            plt.text(x_coords, y_coords, str(chip), color="white", ha="center", va="center", fontsize=13)
+        gates_x, gates_y, gates_z = zip(*self.gates.values())
+        gates_plot = go.Scatter3d(x=gates_x, y=gates_y, z=gates_z, mode='markers', marker=dict(color='red', size=8), text=list(self.gates.keys()), textposition='top center', textfont=dict(size=100, color='black'), hovertemplate='Gate %{text}: (%{x}, %{y}, %{z})<extra></extra>', name='Gates')
+        data = [gates_plot]
 
         # Plot the wires
-        for wire in self.wires:
-            # Unzip the wire path into rows and columns
-            x_coords, y_coords = zip(*wire.coords)
-            plt.plot(x_coords, y_coords, color="blue", linewidth=5)
+        for i, wire in enumerate(self.wires):
+            wire_x, wire_y, wire_z = zip(*wire.coords)
+            wire_plot = go.Scatter3d(x=wire_x, y=wire_y, z=wire_z, mode='lines', line=dict(color='blue', width=3), name='Wires', showlegend=i == 0, hovertemplate=f'Wire {i + 1}: ' + '(%{x}, %{y}, %{z})<extra></extra>')
+            data.append(wire_plot)
+            show_wire_legend = False
+
+        fig = go.Figure(data=data)
+
+        fig.update_layout(
+            scene=dict(
+                xaxis_title='X Axis',
+                yaxis_title='Y Axis',
+                zaxis_title='Z Axis',
+                camera=dict(
+                    eye=camera_eye,  # Adjust the camera position
+                    center=dict(x=0, y=0, z=0),
+                    up=dict(x=0, y=0, z=1),  # Up the camera view
+                ),
+            ),
+            title=f"Chip {self.chip_id}, Net {self.net_id}"
+        )
+
+        config = {
+            'modeBarButtonsToRemove': ['orbitRotation', 'resetCameraDefault'],
+            'displaylogo': False,
+            'scrollZoom': True,
+        }
+
+        # Show the plot
+        fig.show()
 
         if image_filename is not None:
-            image_filename = add_missing_extension(image_filename, ".png")
+            image_filename = add_missing_extension(image_filename, ".html")
             image_filepath = os.path.join(OUTPUT_FOLDER, "img", image_filename)
 
-            plt.savefig(image_filepath)
+            pio.write_html(fig, file=image_filepath, config=config)
 
-        plt.show()
 
 
     def save_output(self, output_filename="output") -> None:
@@ -179,25 +204,25 @@ chips = Chip(filepath_print, filepath_netlist)
 
 # for testing (wire = from gate to gate)
 sub_optimal_wires = [
-    [(1, 5), (2, 5), (3, 5), (4, 5), (5, 5), (6, 5)],
-    [(6, 5), (6, 4), (5, 4), (5, 3), (5, 2), (6, 2)],
-    [(6, 2), (7, 2), (7, 1), (6, 1), (5, 1), (4, 1), (3, 1)],
-    [(3, 1), (3, 0), (2, 0), (1, 0), (0, 0), (0, 1), (0, 2), (0, 3), (1, 3), (2, 3), (3, 3), (4, 3), (4, 4)],
-    [(4, 4), (3, 4), (2, 4), (1, 4), (1, 5)]
+    [(1, 5, 0), (2, 5, 0), (3, 5, 0), (4, 5, 0), (5, 5, 0), (6, 5, 0)],
+    [(6, 5, 0), (6, 4, 0), (5, 4, 0), (5, 3, 0), (5, 2, 0), (6, 2, 0)],
+    [(6, 2, 0), (7, 2, 0), (7, 1, 0), (6, 1, 0), (5, 1, 0), (4, 1, 0), (3, 1, 0)],
+    [(3, 1, 0), (3, 0, 0), (2, 0, 0), (1, 0, 0), (0, 0, 0), (0, 1, 0), (0, 2, 0), (0, 3, 0), (1, 3, 0), (2, 3, 0), (3, 3, 0), (4, 3, 0), (4, 4, 0)],
+    [(4, 4, 0), (3, 4, 0), (2, 4, 0), (1, 4, 0), (1, 5, 0)]
 ]
 
 
 intersection_wires = [
-    [(1, 5), (2, 5), (3, 5), (4, 5), (5, 5), (6, 5)],
-    [(6, 5), (6, 4), (5, 4), (4, 4)],
-    [(4, 4), (4, 3), (4, 2), (3, 2), (3, 3), (4, 3), (5, 3), (5, 3), (6, 3), (7, 3)]
+    [(1, 5, 0), (2, 5, 0), (3, 5, 0), (4, 5, 0), (5, 5, 0), (6, 5, 0)],
+    [(6, 5, 0), (6, 4, 0), (5, 4, 0), (4, 4, 0)],
+    [(4, 4, 0), (4, 3, 0), (4, 2, 0), (3, 2, 0), (3, 3, 0), (4, 3, 0), (5, 3, 0), (5, 3, 0), (6, 3, 0), (7, 3, 0)]
 ]
 
 collision_wires = [
-    [(1, 5), (2, 5), (3, 5), (4, 5), (5, 5), (6, 5)],
-    [(6, 5), (6, 4), (5, 4), (4, 4)],
-    [(4, 4), (4, 3), (4, 2), (3, 2), (3, 3), (4, 3), (5, 3), (5, 3), (6, 3), (7, 3)],
-    [(7, 3), (6, 3), (6, 4), (6, 5), (6, 6)]
+    [(1, 5, 0), (2, 5, 0), (3, 5, 0), (4, 5, 0), (5, 5, 0), (6, 5, 0)],
+    [(6, 5, 0), (6, 4, 0), (5, 4, 0), (4, 4, 0)],
+    [(4, 4, 0), (4, 3, 0), (4, 2, 0), (3, 2, 0), (3, 3, 0), (4, 3, 0), (5, 3, 0), (5, 3, 0), (6, 3, 0), (7, 3, 0)],
+    [(7, 3, 0), (6, 3, 0), (6, 4, 0), (6, 5, 0), (6, 6, 0)]
 ]
 
 chips.add_wires(sub_optimal_wires)
