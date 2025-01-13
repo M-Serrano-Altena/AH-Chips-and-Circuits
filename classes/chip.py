@@ -82,6 +82,15 @@ class Chip:
         for wire_coord_list in wires_coord_list:
             self.add_wire(wire_coord_list)
 
+    @property
+    def not_fully_connected(self):
+        for wire in self.wires:
+            if wire.is_wire_connected():
+                continue
+            else: 
+                return True
+        return False
+
 
     def get_intersection_coords(self):
         gate_coords = set(self.gates.values())
