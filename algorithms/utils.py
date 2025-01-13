@@ -9,6 +9,10 @@ def cost_function(wire_length: int, intersect_amount: int) -> int:
     
     return wire_length + 300 * intersect_amount
 
+def manhattan_distance(coord1, coord2):
+    """ returns the distance between two points"""
+    return abs(coord1[0] - coord2[0]) + abs(coord1[1] - coord2[1]) + abs(coord1[2] - coord2[2])
+
 def shortest_cable(wire: Wire) -> None:
     """Adds a shortest possible wire route to the wire variable (chosen at random)"""
 
@@ -69,12 +73,18 @@ def get_neighbours(chip: 'Chip', coord: tuple[int,int,int]) -> list[tuple[int,in
 
     return neighbours
 
-def is_occupied(chip: 'Chip', coord: tuple[int,int,int]) -> bool:
-    """ Checks if `coord` is already occupied by any wire (TODO: we now use an exception for gates). """
+def is_occupied(chip: 'Chip', coord: tuple[int,int,int], own_gates: set[tuple[int,int,int]] = None) -> bool:
+    """ 
+    Checks if `coord` is already occupied by any wire
+    (Optionally checks if the coord is its own gate, to return false since occupation is from its own wire.) 
+    """
+
+    if own_gates and (coord in own_gates):
+        return False
 
     gate_coords = set(chip.gates.values())
     if coord in gate_coords:
-        return False
+        return True
 
     for wire in chip.wires:
         if coord in wire.coords:
@@ -92,8 +102,11 @@ def bfs_route(chip: 'Chip', start: tuple[int,int,int], end: tuple[int,int,int],
     manhattan_dist = abs(start[0]-end[0]) + abs(start[1]-end[1]) + abs(start[2]-end[2])
     limit = manhattan_dist + max_extra_length
 
+    # que consists of tuple entries of (current node, [path])
     queue = deque([(start, [start])])
     visited = set([start])
+
+    wire_gates = {start, end}
 
     while queue:
         (current, path) = queue.popleft()
@@ -105,14 +118,14 @@ def bfs_route(chip: 'Chip', start: tuple[int,int,int], end: tuple[int,int,int],
         if len(path) - 1 > limit:
             continue
 
-        for nbr in get_neighbours(chip, current):
-            if nbr not in visited:
-                # if short_circuit not allowed, we do not save nbr if occupied
-                if (not allow_short_circuit) and is_occupied(chip, nbr):
+        for neighbour in get_neighbours(chip, current):
+            if neighbour not in visited:
+                # if neighbour is occupied and we do not allow short circuit we continue, otherwise we save option
+                if (not allow_short_circuit) and is_occupied(chip, neighbour, own_gates=wire_gates):
                     continue
 
-                visited.add(nbr)
+                visited.add(neighbour)
                 # we add the current node and path to the queue
-                queue.append((nbr, path + [nbr]))
+                queue.append((neighbour, path + [neighbour]))
 
     return None

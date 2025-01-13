@@ -9,11 +9,19 @@ from algorithms.utils import *
 # if shortest possible not possible check for less short (offset += 1; untill k = 5), without any short circuit
 # if still no solution found, and allow_short_circuit = True, we connect ignoring short circuit
 # we repeat algorithm until chip.not_full_connected is false
+# optional: sort wires, first fills in the wires with the highest manhatthan distance
 
-def greed_algo(chip: Chip, max_offset: int = 5, allow_short_circuit: bool = False) -> None:
+def greed_algo(chip: Chip, max_offset: int = 5, allow_short_circuit: bool = False, sort_wires: bool = False) -> None:
+
+    if sort_wires:
+        chip.wires.sort(
+        key=lambda w: manhattan_distance(w.coords[0], w.coords[1]),
+        reverse=True
+        )
 
     # we set iteration safeguards to prevent infinite loops
     iteration_safety = 0
+    print(f"This is iteration: {iteration_safety}")
     max_iterations = len(chip.wires) * 5 
 
     while chip.not_fully_connected and iteration_safety < max_iterations:
