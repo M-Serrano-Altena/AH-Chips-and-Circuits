@@ -31,7 +31,6 @@ def convert_to_matrix_coords(coords, matrix_y_size):
     x_coord, y_coord = coords
     return matrix_y_size - 1 - y_coord, x_coord
 
-# Load data
 class Chip:
     def __init__(self, base_data_path, chip_id, net_id, output_folder="output/"):
         self.chip_id = chip_id
@@ -74,7 +73,7 @@ class Chip:
             )
         )
         
-        
+        # reverse all netlist connections
         netlist_reverse = [{value: key for key, value in dicts.items()} for dicts in self.netlist]
         self.netlist_double_sided = self.netlist + netlist_reverse
 

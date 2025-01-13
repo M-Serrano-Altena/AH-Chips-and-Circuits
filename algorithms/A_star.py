@@ -1,9 +1,19 @@
 from classes.chip import Chip
-from algorithms.utils import Node, cost_function, Coords_3D, INTERSECTION_COST, COLLISION_COST
+from algorithms.utils import Node, Coords_3D, INTERSECTION_COST, COLLISION_COST
 import itertools
 
 class A_star:
+    """
+    A* pathfinding algorithm implementation for routing wires in a chip
+    """
     def __init__(self, chip: Chip, allow_intersections=True):
+        """
+        Initialize the A_star solver.
+        
+        Args:
+            chip (Chip): The chip layout containing grid information and netlist
+            allow_intersections (bool): Whether intersections between wires are allowed
+        """
         self.chip = chip
         self.allow_intersections = allow_intersections
 
@@ -13,9 +23,28 @@ class A_star:
 
     @staticmethod
     def manhattan_distance(coord1, coord2) -> int:
+        """
+        Calculate the Manhattan distance between two coordinates
+        
+        Args:
+            coord1 (Coords_3D): The first coordinate
+            coord2 (Coords_3D): The second coordinate
+        
+        Returns:
+            int: The Manhattan distance between the two coordinates
+        """
         return sum(abs(coord1[i] - coord2[i]) for i in range(len(coord1)))
     
     def get_existing_path_cost(self, node: Node) -> int:
+        """
+        Calculate the cost of the existing path from the start to the given node
+        
+        Args:
+            node (Node): The current node
+        
+        Returns:
+            int: The path cost from the start node to the current node
+        """
         cost = 0
         cursor = node
         while cursor is not None:
@@ -25,6 +54,15 @@ class A_star:
         return cost
     
     def get_extra_wire_cost(self, current_node) -> int:
+        """
+        Calculate the extra cost for the current node due to intersections or collisions
+        
+        Args:
+            current_node (Node): The node being evaluated
+        
+        Returns:
+            int: The extra cost due to intersections or collisions
+        """
         extra_cost = 0
 
         # gate can't intersect or have a collision
@@ -50,6 +88,16 @@ class A_star:
 
     
     def heuristic_function(self, current_node: Node, goal_coords: Coords_3D) -> int:
+        """
+        Calculate the heuristic cost for the current node
+        
+        Args:
+            current_node (Node): The current node
+            goal_coords (Coords_3D): The goal coordinates
+        
+        Returns:
+            int: The total heuristic cost including: manhattan distance, path cost, and extra cost
+        """
         manhattan_distance = self.manhattan_distance(current_node.state, goal_coords)
         exising_path_cost = self.get_existing_path_cost(current_node)
         extra_cost = self.get_extra_wire_cost(current_node)
@@ -57,6 +105,12 @@ class A_star:
     
 
     def solve(self) -> list[list[Coords_3D]]:
+        """
+        Solve the routing problem for all connections in the chip's netlist
+        
+        Returns:
+            list[list[Coords_3D]]: A list of wire segments for each connection
+        """
         for connection in self.chip.netlist:
             gate_1_id, gate_2_id = list(connection.items())[0]
             gate_1_coords = self.chip.gates[gate_1_id]
@@ -72,6 +126,16 @@ class A_star:
 
             
     def solve_single_wire(self, start_coords: Coords_3D, goal_coords: Coords_3D) -> list[Coords_3D]:
+        """
+        Solve the routing problem for a single wire between two gates
+        
+        Args:
+            start_coords (Coords_3D): The starting gate coordinates
+            goal_coords (Coords_3D): The goal gate coordinates
+        
+        Returns:
+            list[Coords_3D]: A list of coordinates representing the path for the wire
+        """
         self.frontier = []
         self.start_gate = Node(start_coords, parent=None)
         self.frontier.append(self.start_gate)
@@ -104,6 +168,13 @@ class A_star:
 
 
     def add_neighbours_to_frontier(self, node: Node, goal_coords: Coords_3D) -> None:
+        """
+        Add the neighbours of the current node to the frontier for evaluation
+        
+        Args:
+            node (Node): The current node
+            goal_coords (Coords_3D): The goal coordinates
+        """
         coords_dim = len(node.state)
         all_offset_combos = itertools.product([-1, 0, 1], repeat=coords_dim)
         all_neighbour_coords = [
