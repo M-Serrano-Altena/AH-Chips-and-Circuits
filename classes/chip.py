@@ -5,7 +5,7 @@ import plotly.io as pio
 import pandas as pd
 import os
 from classes.wire import Wire
-from classes.algorithm import cost_function
+from algorithms.utils import cost_function
 
 
 def add_missing_extension(filename: str, extension: str):
@@ -64,7 +64,7 @@ class Chip:
 
     def add_wire(self, wire_coord_list) -> None:
         wire = Wire(wire_coord_list[0], wire_coord_list[-1])
-        wire.extend_coords(wire_coord_list)
+        wire.append_wire_segment_list(wire_coord_list)
         self.wires.append(wire)
 
     def add_wires(self, wires_coord_list) -> None:
@@ -76,12 +76,13 @@ class Chip:
         gate_coords = set(self.gates.values())
         wires_coords_set = [set(wire.coords) for wire in self.wires]
         shared_coords = set()
-        for wire1 in wires_coords_set:
-            for wire2 in wires_coords_set:
-                if wire1 == wire2:
+        # these are wire_segments right not wires?
+        for wire_segment_set_1 in wires_coords_set:
+            for wire_segment_set_2 in wires_coords_set:
+                if wire_segment_set_1 == wire_segment_set_2:
                     continue
-
-                shared_coords |= wire1 & wire2
+     
+                shared_coords |= wire_segment_set_1 & wire_segment_set_2
 
         # exclude shared coords that correspond to gates
         shared_coords -= gate_coords

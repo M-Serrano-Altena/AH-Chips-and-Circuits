@@ -26,11 +26,11 @@ class Wire():
         for i in range(len(self.coords) - 1):
             if not self.are_points_neighbours(self.coords[i], self.coords[i + 1]):
                 return False
-            
+               
         return True
     
 
-    def append_coords(self, coords: tuple[int, int, int]) -> None:
+    def append_wire_segment(self, coords: tuple[int, int, int]) -> None:
         # don't add gate coords to the wire again
         if coords in self.gates:
             return
@@ -43,6 +43,6 @@ class Wire():
 
         return
     
-    def extend_coords(self, coords_list: list[tuple[int, int, int]]) -> None:
+    def append_wire_segment_list(self, coords_list: list[tuple[int, int, int]]) -> None:
         for coords in coords_list:
-            self.append_coords(coords)
+            self.append_wire_segment(coords)
