@@ -10,7 +10,7 @@ chip0 = Chip(base_data_path, chip_id=0, net_id=3, output_folder="output")
 greed_algo(chip0, max_offset=10, allow_short_circuit=False, sort_wires= True)
 
 # 3) we check the final costs
-print("Total wire cost:", chip0.calc_total_wire_cost())
+print("Total wire cost:", chip0.calc_total_grid_cost())
 
 # 4) show and save the grid
 chip0.show_grid("final_layout.html")

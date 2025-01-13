@@ -1,6 +1,7 @@
 import os
 from classes.chip import Chip
 from algorithms.A_star import A_star
+from sys import argv
 
 # travel to base folder
 BASE_DIR = os.path.dirname(__file__)
@@ -9,45 +10,24 @@ os.chdir(BASE_DIR)
 OUTPUT_FOLDER = "output"
 
 base_data_path = r"data/"
-chip = Chip(base_data_path, chip_id=0, net_id=2, output_folder=OUTPUT_FOLDER)
+chip_id = 0
+net_id = 1
 
-# for testing (wire = from gate to gate)
-sub_optimal_wires = [
-    [(1, 5, 0), (2, 5, 0), (3, 5, 0), (4, 5, 0), (5, 5, 0), (6, 5, 0)],
-    [(6, 5, 0), (6, 4, 0), (5, 4, 0), (5, 3, 0), (5, 2, 0), (6, 2, 0)],
-    [(6, 2, 0), (7, 2, 0), (7, 1, 0), (6, 1, 0), (5, 1, 0), (4, 1, 0), (3, 1, 0)],
-    [(3, 1, 0), (3, 0, 0), (2, 0, 0), (1, 0, 0), (0, 0, 0), (0, 1, 0), (0, 2, 0), (0, 3, 0), (1, 3, 0), (2, 3, 0), (3, 3, 0), (4, 3, 0), (4, 4, 0)],
-    [(4, 4, 0), (3, 4, 0), (2, 4, 0), (1, 4, 0), (1, 5, 0)]
-]
+if len(argv) >= 2:
+    chip_id = argv[1]
 
+if len(argv) == 3:
+    net_id = argv[2]
 
-intersection_wires = [
-    [(1, 5, 0), (2, 5, 0), (3, 5, 0), (4, 5, 0), (5, 5, 0), (6, 5, 0)],
-    [(6, 5, 0), (6, 4, 0), (5, 4, 0), (4, 4, 0)],
-    [(4, 4, 0), (4, 3, 0), (4, 2, 0), (3, 2, 0), (3, 3, 0), (4, 3, 0), (5, 3, 0), (5, 3, 0), (6, 3, 0), (7, 3, 0)]
-]
-
-collision_wires = [
-    [(1, 5, 0), (2, 5, 0), (3, 5, 0), (4, 5, 0), (5, 5, 0), (6, 5, 0)],
-    [(6, 5, 0), (6, 4, 0), (5, 4, 0), (4, 4, 0)],
-    [(4, 4, 0), (4, 3, 0), (4, 2, 0), (3, 2, 0), (3, 3, 0), (4, 3, 0), (5, 3, 0), (5, 3, 0), (6, 3, 0), (7, 3, 0)],
-    [(7, 3, 0), (6, 3, 0), (6, 4, 0), (6, 5, 0), (6, 6, 0)]
-]
-
-sub_optimal_wires_3D = [
-    [(1, 5, 0), (2, 5, 0), (3, 5, 0), (4, 5, 0), (5, 5, 0), (6, 5, 0)],
-    [(6, 5, 0), (6, 5, 1), (6, 4, 1), (5, 4, 1), (5, 3, 1), (5, 2, 1), (6, 2, 1), (6, 2, 0)],
-    [(6, 2, 0), (7, 2, 0), (7, 1, 0), (6, 1, 0), (5, 1, 0), (4, 1, 0), (3, 1, 0)],
-    [(3, 1, 0), (3, 0, 0), (2, 0, 0), (1, 0, 0), (0, 0, 0), (0, 1, 0), (0, 2, 0), (0, 3, 0), (1, 3, 0), (2, 3, 0), (3, 3, 0), (4, 3, 0), (4, 4, 0)],
-    [(4, 4, 0), (3, 4, 0), (2, 4, 0), (1, 4, 0), (1, 5, 0)]
-]
-
+chip = Chip(base_data_path, chip_id=chip_id, net_id=net_id, output_folder=OUTPUT_FOLDER)
 algorithm = A_star(chip, allow_intersections=False)
+
 all_wire_segments = algorithm.solve()
+chip.add_entire_wires(all_wire_segments)
 
-for wire_segment in all_wire_segments:  
-    print(wire_segment)
+base_save_name = f"chip_{chip_id}_net_{net_id}"
+plot_save_name = "layout_" + base_save_name
+csv_save_name = "output_" + base_save_name
 
-chip.add_wires(all_wire_segments)
-chip.show_grid("test")
-chip.save_output()
+chip.show_grid(plot_save_name)
+chip.save_output(csv_save_name)

@@ -1,7 +1,12 @@
-from classes.chip import *
-from classes.wire import *
 import random
 from collections import deque
+from typing import TYPE_CHECKING
+
+# only imported for typing to avoid circular importing
+if TYPE_CHECKING:
+    from classes.chip import Chip
+    from classes.wire import Wire
+
 
 INTERSECTION_COST = 300
 COLLISION_COST = 1000000
@@ -27,7 +32,8 @@ def manhattan_distance(coord1, coord2):
     """ returns the distance between two points"""
     return abs(coord1[0] - coord2[0]) + abs(coord1[1] - coord2[1]) + abs(coord1[2] - coord2[2])
 
-def shortest_cable(wire: Wire) -> None:
+
+def shortest_cable(wire: 'Wire') -> None:
     """Adds a shortest possible wire route to the wire variable (chosen at random)"""
 
     # we get the start and end points of connection
@@ -116,7 +122,7 @@ def bfs_route(chip: 'Chip', start: tuple[int,int,int], end: tuple[int,int,int],
     manhattan_dist = abs(start[0]-end[0]) + abs(start[1]-end[1]) + abs(start[2]-end[2])
     limit = manhattan_dist + max_extra_length
 
-    # que consists of tuple entries of (current node, [path])
+    # queue consists of tuple entries of (current node, [path])
     queue = deque([(start, [start])])
     visited = set([start])
 

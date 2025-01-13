@@ -73,8 +73,10 @@ class A_star:
             
     def solve_single_wire(self, start_coords: Coords_3D, goal_coords: Coords_3D) -> list[Coords_3D]:
         self.frontier = []
-        start_gate = Node(start_coords, parent=None)
-        self.frontier.append(start_gate)
+        self.start_gate = Node(start_coords, parent=None)
+        self.frontier.append(self.start_gate)
+
+        print_counter = 0
 
         while True:
             if len(self.frontier) == 0:
@@ -82,7 +84,11 @@ class A_star:
 
             node = sorted(self.frontier, key=lambda node: node.cost)[0]
             self.frontier.remove(node)
-            print(len(self.frontier))
+
+            frontier_size = len(self.frontier)
+            if frontier_size / 10000 > print_counter:
+                print("frontier size:", frontier_size)
+                print_counter += 1
 
             if node.state == goal_coords:
                 wire_segment_list = []
@@ -117,6 +123,10 @@ class A_star:
             # don't add collisions to the frontier
             if neighbour_node.cost >= COLLISION_COST:
                 continue
+            
+            # don't add gates other than start and goal gate to wire
+            # if neighbour_coords in self.chip.gate_coords and neighbour_coords not in {self.start_gate.state, goal_coords}:
+            #     continue
 
             if not self.allow_intersections:
                 if neighbour_node.cost >= 300:

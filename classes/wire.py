@@ -39,7 +39,7 @@ class Wire():
         # don't add gate coords to the wire again
         if coords in self.gates:
             return
-
+        
         if self.are_points_neighbours(coords, self.coords[-2]):
             self.coords.insert(-1, coords)
         

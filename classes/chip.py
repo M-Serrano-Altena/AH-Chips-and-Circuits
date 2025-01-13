@@ -47,9 +47,10 @@ class Chip:
 
         # dict with gate number as key, and coords as values
         self.gates: dict[int, Coords_3D] = {
-            chip_num: tuple(coords) + (0,) for chip_num, coords in zip(self.gates["index"], self.gates["data"])
+            gate_id: tuple(coords) + (0,) for gate_id, coords in zip(self.gates["index"], self.gates["data"])
         }
 
+        self.coords_to_gate_map = {coords: gate_id for gate_id, coords in self.gates.items()}
         self.gate_coords = set(self.gates.values())
 
 
@@ -69,14 +70,14 @@ class Chip:
 
         # we initiate in the first cordinates of the wires in the self.wires list 
 
-        list_of_connections = [[key, value] for connection in self.netlist for (key, value) in connection.items()]
+        list_of_connections = [(gate_1, gate_2) for connection in self.netlist for gate_1, gate_2 in connection.items()]
 
-        for [gate_1, gate_2] in list_of_connections:
+        for gate_1, gate_2 in list_of_connections:
             gate_1_coords = self.gates[gate_1]
             gate_2_coords = self.gates[gate_2]
 
             wire_in_system = Wire(gate_1_coords, gate_2_coords)
-            self.wires.append(wire_in_system)   
+            self.wires.append(wire_in_system)
 
 
     def add_wire(self, wire_segment_list: list[Coords_3D]) -> None:
@@ -85,10 +86,29 @@ class Chip:
         wire.append_wire_segment_list(wire_segment_list)
         self.wires.append(wire)
 
+    def add_entire_wire(self, wire_segment_list: list[Coords_3D]) -> None:
+        """Create an entire wire from a wire segment list"""
+        gate_1_coords = wire_segment_list[0]
+        gate_2_coords = wire_segment_list[-1]
+        wire_segment_list = wire_segment_list[1:-1]
+
+        wire = Wire(gate_1_coords, gate_2_coords)
+        wire.append_wire_segment_list(wire_segment_list)
+
+        for i, existing_wire in enumerate(self.wires):
+            if {existing_wire.coords[0], existing_wire.coords[-1]} == {gate_1_coords, gate_2_coords}:
+                self.wires[i] = wire
+                return
+
     def add_wires(self, list_all_wire_segments: list[list[Coords_3D]]) -> None:
         """Create multiple wires from a list of wire segments"""
         for wire_coord_list in list_all_wire_segments:
             self.add_wire(wire_coord_list)
+
+    def add_entire_wires(self, list_all_wire_segments: list[list[Coords_3D]]) -> None:
+        """Create multiple entire wires from a list of wire segments"""
+        for wire_segment_list in list_all_wire_segments:
+            self.add_entire_wire(wire_segment_list)
 
     @property
     def not_fully_connected(self):
@@ -181,8 +201,14 @@ class Chip:
 
         # Plot the wires
         for i, wire in enumerate(self.wires):
+            gate_1_coords = wire.coords[0]
+            gate_2_coords = wire.coords[-1]
+
+            gate_1_id = self.coords_to_gate_map[gate_1_coords]
+            gate_2_id = self.coords_to_gate_map[gate_2_coords]
+
             wire_x, wire_y, wire_z = zip(*wire.coords)
-            wire_plot = go.Scatter3d(x=wire_x, y=wire_y, z=wire_z, mode='lines', line=dict(color='blue', width=3), name='Wires', showlegend=i == 0, hovertemplate=f'Wire {i + 1}: ' + '(%{x}, %{y}, %{z})<extra></extra>')
+            wire_plot = go.Scatter3d(x=wire_x, y=wire_y, z=wire_z, mode='lines', line=dict(color='blue', width=3), name='Wires', showlegend=i == 0, hovertemplate=f'Wire {gate_1_id} -> {gate_2_id}: ' + '(%{x}, %{y}, %{z})<extra></extra>')
             data.append(wire_plot)
 
         fig = go.Figure(data=data)
