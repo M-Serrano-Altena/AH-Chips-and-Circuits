@@ -1,5 +1,6 @@
 import os
 from classes.chip import Chip
+from algorithms.A_star import A_star
 
 # travel to base folder
 BASE_DIR = os.path.dirname(__file__)
@@ -8,7 +9,7 @@ os.chdir(BASE_DIR)
 OUTPUT_FOLDER = "output"
 
 base_data_path = r"data/"
-chip = Chip(base_data_path, chip_id=0, net_id=1, output_folder=OUTPUT_FOLDER)
+chip = Chip(base_data_path, chip_id=0, net_id=2, output_folder=OUTPUT_FOLDER)
 
 # for testing (wire = from gate to gate)
 sub_optimal_wires = [
@@ -41,6 +42,12 @@ sub_optimal_wires_3D = [
     [(4, 4, 0), (3, 4, 0), (2, 4, 0), (1, 4, 0), (1, 5, 0)]
 ]
 
-chip.add_wires(sub_optimal_wires_3D)
+algorithm = A_star(chip, allow_intersections=False)
+all_wire_segments = algorithm.solve()
+
+for wire_segment in all_wire_segments:  
+    print(wire_segment)
+
+chip.add_wires(all_wire_segments)
 chip.show_grid("test")
 chip.save_output()

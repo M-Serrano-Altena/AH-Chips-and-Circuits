@@ -1,31 +1,8 @@
-import plotly.graph_objects as go
+import itertools
 
-# Define the coordinates for the line
-x = [0, 1, 2, 3, 4]
-y = [0, 1, 2, 3, 4]
-z = [0, 1, 2, 3, 4]
+offsets = itertools.product([-1, 0, 1], repeat=3)
 
-# Create the 3D line plot
-fig = go.Figure(data=[go.Scatter3d(
-    x=x,
-    y=y,
-    z=z,
-    mode='lines',  # Use 'lines' for a connected line
-    line=dict(
-        color='blue',
-        width=3
-    )
-)])
+print(list(offsets))
 
-# Update layout for better appearance
-fig.update_layout(
-    scene=dict(
-        xaxis_title='X Axis',
-        yaxis_title='Y Axis',
-        zaxis_title='Z Axis'
-    ),
-    title="3D Line Plot"
-)
-
-# Show the plot
-fig.show()
+l = [3, 2, 1]
+print(sorted(l)[0])

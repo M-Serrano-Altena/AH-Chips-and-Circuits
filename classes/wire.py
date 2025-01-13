@@ -1,5 +1,7 @@
+from algorithms.utils import Coords_3D
+
 class Wire():
-    def __init__(self, gate1: tuple[int, int, int], gate2: tuple[int, int, int]):
+    def __init__(self, gate1: Coords_3D, gate2: Coords_3D):
         self.gates = [gate1, gate2]
         self.coords: list[tuple] = [gate1, gate2]
 
@@ -17,12 +19,13 @@ class Wire():
         return len(self.coords) != len(set(self.coords))
     
     @staticmethod
-    def are_points_neighbours(coord1: tuple[int, int, int], coord2: tuple[int, int, int]) -> bool:
-        """Checks if points are next to each other
+    def are_points_neighbours(coord1: Coords_3D, coord2: Coords_3D) -> bool:
+        """Checks if points are next to each other in 3D space
         """
         return sum(abs(coord1[i] - coord2[i]) for i in range(len(coord1))) == 1
         
     def is_wire_connected(self) -> bool:
+        """Checks is all wire segments are neighbours (and thus connected)"""
         for i in range(len(self.coords) - 1):
             if not self.are_points_neighbours(self.coords[i], self.coords[i + 1]):
                 return False
@@ -30,7 +33,9 @@ class Wire():
         return True
     
 
-    def append_wire_segment(self, coords: tuple[int, int, int]) -> None:
+    def append_wire_segment(self, coords: Coords_3D) -> None:
+        """Adds a wire segment to a wire if it's a neighbour with one of the wire ends"""
+
         # don't add gate coords to the wire again
         if coords in self.gates:
             return
@@ -43,6 +48,7 @@ class Wire():
 
         return
     
-    def append_wire_segment_list(self, coords_list: list[tuple[int, int, int]]) -> None:
+    def append_wire_segment_list(self, coords_list: list[Coords_3D]) -> None:
+        """Add multiple wire segments to a wire"""
         for coords in coords_list:
             self.append_wire_segment(coords)
