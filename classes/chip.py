@@ -61,6 +61,17 @@ class Chip:
         netlist_reverse = [{value: key for key, value in dicts.items()} for dicts in self.netlist]
         self.netlist_double_sided = self.netlist + netlist_reverse
 
+        # we initiate in the first cordinates of the wires in the self.wires list 
+
+        list_of_connections = [[key, value] for connection in self.netlist for (key, value) in connection.items()]
+
+        for [gate_1, gate_2] in list_of_connections:
+            gate_1_coords = self.gates[gate_1]
+            gate_2_coords = self.gates[gate_2]
+
+            wire_in_system = Wire(gate_1_coords, gate_2_coords)
+            self.wires.append(wire_in_system)   
+
 
     def add_wire(self, wire_coord_list) -> None:
         wire = Wire(wire_coord_list[0], wire_coord_list[-1])
