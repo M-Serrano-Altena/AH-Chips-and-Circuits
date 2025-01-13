@@ -67,6 +67,17 @@ class Chip:
         netlist_reverse = [{value: key for key, value in dicts.items()} for dicts in self.netlist]
         self.netlist_double_sided = self.netlist + netlist_reverse
 
+        # we initiate in the first cordinates of the wires in the self.wires list 
+
+        list_of_connections = [[key, value] for connection in self.netlist for (key, value) in connection.items()]
+
+        for [gate_1, gate_2] in list_of_connections:
+            gate_1_coords = self.gates[gate_1]
+            gate_2_coords = self.gates[gate_2]
+
+            wire_in_system = Wire(gate_1_coords, gate_2_coords)
+            self.wires.append(wire_in_system)   
+
 
     def add_wire(self, wire_segment_list: list[Coords_3D]) -> None:
         """Create a wire from a wire segment list"""
@@ -78,6 +89,15 @@ class Chip:
         """Create multiple wires from a list of wire segments"""
         for wire_coord_list in list_all_wire_segments:
             self.add_wire(wire_coord_list)
+
+    @property
+    def not_fully_connected(self):
+        for wire in self.wires:
+            if wire.is_wire_connected():
+                continue
+            else: 
+                return True
+        return False
 
 
     def get_intersection_coords(self) -> set[Coords_3D]:
