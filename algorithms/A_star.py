@@ -40,10 +40,10 @@ class A_star:
 
                 # check for collision
                 current_coords_index = wire_segment_list.index(current_coords)
-                if current_coords_index == 0 and wire_segment_list[current_coords_index - 1] == parent_coords:
+                if current_coords_index != 0 and wire_segment_list[current_coords_index - 1] == parent_coords:
                     return COLLISION_COST
                 
-                if current_coords_index == len(wire_segment_list) and wire_segment_list[current_coords_index + 1] == parent_coords:
+                if current_coords_index != len(wire_segment_list) and wire_segment_list[current_coords_index + 1] == parent_coords:
                     return COLLISION_COST
 
         return extra_cost
@@ -124,7 +124,7 @@ class A_star:
             if neighbour_node.cost >= COLLISION_COST:
                 continue
             
-            # don't add gates other than start and goal gate to wire
+            # # don't add gates other than start and goal gate to wire
             # if neighbour_coords in self.chip.gate_coords and neighbour_coords not in {self.start_gate.state, goal_coords}:
             #     continue
 

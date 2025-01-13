@@ -28,9 +28,9 @@ def cost_function(wire_length: int, intersect_amount: int) -> int:
     """Calculates the cost of creating the chip"""
     return wire_length + INTERSECTION_COST * intersect_amount
 
-def manhattan_distance(coord1, coord2):
-    """ returns the distance between two points"""
-    return abs(coord1[0] - coord2[0]) + abs(coord1[1] - coord2[1]) + abs(coord1[2] - coord2[2])
+def manhattan_distance(coord1: Coords_3D, coord2: Coords_3D):
+    """Returns the manhattan distance between two points"""
+    return sum(abs(coord1[i] - coord2[i]) for i in range(len(coord1)))
 
 
 def shortest_cable(wire: 'Wire') -> None:
@@ -70,7 +70,7 @@ def shortest_cable(wire: 'Wire') -> None:
         wire.append_wire_segment(current_coord)
 
 
-def get_neighbours(chip: 'Chip', coord: tuple[int,int,int]) -> list[tuple[int,int,int]]:
+def get_neighbours(chip: 'Chip', coord: Coords_3D) -> list[Coords_3D]:
     """
     Return valid neighboring coordinates in 3D (±x, ±y, ±z), 
     ensuring we stay within the grid boundaries.
@@ -93,7 +93,7 @@ def get_neighbours(chip: 'Chip', coord: tuple[int,int,int]) -> list[tuple[int,in
 
     return neighbours
 
-def is_occupied(chip: 'Chip', coord: tuple[int,int,int], own_gates: set[tuple[int,int,int]] = None) -> bool:
+def is_occupied(chip: 'Chip', coord: Coords_3D, own_gates: set[Coords_3D] = None) -> bool:
     """ 
     Checks if `coord` is already occupied by any wire
     (Optionally checks if the coord is its own gate, to return false since occupation is from its own wire.) 
@@ -111,15 +111,16 @@ def is_occupied(chip: 'Chip', coord: tuple[int,int,int], own_gates: set[tuple[in
             return True
     return False
 
-def bfs_route(chip: 'Chip', start: tuple[int,int,int], end: tuple[int,int,int], 
-              max_extra_length: int = 0, allow_short_circuit: bool = False) -> list[tuple[int,int,int]]|None:
+def bfs_route(
+        chip: 'Chip', start: Coords_3D, end: Coords_3D, 
+        max_extra_length: int=0, allow_short_circuit: bool=False) -> list[Coords_3D]|None:
     """
     We use a breath first technique to find a route based on the Manhattan technique with an added max_extra_length to the minimal length of the route.
     We add a boolian to the function to allow or not allow short circuiting of the wire. 
     If we have found a path, we return the path as a list of tuples, otherwise we return None
     """
 
-    manhattan_dist = abs(start[0]-end[0]) + abs(start[1]-end[1]) + abs(start[2]-end[2])
+    manhattan_dist = manhattan_distance(start, end)
     limit = manhattan_dist + max_extra_length
 
     # queue consists of tuple entries of (current node, [path])
@@ -129,7 +130,7 @@ def bfs_route(chip: 'Chip', start: tuple[int,int,int], end: tuple[int,int,int],
     wire_gates = {start, end}
 
     while queue:
-        (current, path) = queue.popleft()
+        current, path = queue.popleft()
         if current == end:
             # we have made it to the end and return the path to the end
             return path[1:-1] if len(path) > 2 else []
@@ -141,7 +142,7 @@ def bfs_route(chip: 'Chip', start: tuple[int,int,int], end: tuple[int,int,int],
         for neighbour in get_neighbours(chip, current):
             if neighbour not in visited:
                 # if neighbour is occupied and we do not allow short circuit we continue, otherwise we save option
-                if (not allow_short_circuit) and is_occupied(chip, neighbour, own_gates=wire_gates):
+                if not allow_short_circuit and is_occupied(chip, neighbour, own_gates=wire_gates):
                     continue
 
                 visited.add(neighbour)

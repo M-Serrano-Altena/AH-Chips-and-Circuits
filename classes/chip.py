@@ -5,7 +5,7 @@ import plotly.io as pio
 import pandas as pd
 import os
 from classes.wire import Wire
-from algorithms.utils import cost_function, Coords_3D
+from algorithms.utils import cost_function, Coords_3D, manhattan_distance
 
 def add_missing_extension(filename: str, extension: str):
     """Add an extension to a filename if the extension is missing"""
@@ -65,11 +65,20 @@ class Chip:
         # read netlist
         self.netlist = pd.read_csv(filepath_netlist).to_dict(orient="records")
         self.netlist: list[dict[int, int]] = [{list(dicts.values())[0]: list(dicts.values())[1]} for dicts in self.netlist]
+
+        # sort netlist by ascending manhattan distance
+        self.netlist = list(
+            sorted(
+                self.netlist, key=lambda connection: 
+                manhattan_distance(self.gates[list(connection.keys())[0]], self.gates[list(connection.values())[0]])
+            )
+        )
+        
+        
         netlist_reverse = [{value: key for key, value in dicts.items()} for dicts in self.netlist]
         self.netlist_double_sided = self.netlist + netlist_reverse
 
-        # we initiate in the first cordinates of the wires in the self.wires list 
-
+        # initiate the wires with gate coords 
         list_of_connections = [(gate_1, gate_2) for connection in self.netlist for gate_1, gate_2 in connection.items()]
 
         for gate_1, gate_2 in list_of_connections:

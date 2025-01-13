@@ -20,7 +20,7 @@ if len(argv) == 3:
     net_id = argv[2]
 
 chip = Chip(base_data_path, chip_id=chip_id, net_id=net_id, output_folder=OUTPUT_FOLDER)
-algorithm = A_star(chip, allow_intersections=False)
+algorithm = A_star(chip, allow_intersections=True)
 
 all_wire_segments = algorithm.solve()
 chip.add_entire_wires(all_wire_segments)
