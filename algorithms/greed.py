@@ -25,60 +25,44 @@ def greed_algo(chip: Chip, max_offset: int = 5, allow_short_circuit: bool = Fals
     max_iterations = len(chip.wires) * 5 
 
     while chip.not_fully_connected and iteration_safety < max_iterations:
+
         iteration_safety += 1
 
-        for wire in chip.wires:
-            # wire is already connected so we skip
-            if wire.is_wire_connected():
-                continue 
+        # we start increasing the offset iteratively after having checked each wire
+        for offset in range(max_offset +1):
+            for wire in chip.wires:
+                # wire is already connected so we skip
+                if wire.is_wire_connected():
+                    continue 
 
-            start = wire.gates[0]  # gate1
-            end = wire.gates[1]    # gate2
+                start = wire.gates[0]  # gate1
+                end = wire.gates[1]    # gate2
 
-            # we overwrite the coords to be safe, since we are trying a new set:
-            wire.coords = [start, end]
+                # we overwrite the coords to be safe, since we are trying a new set:
+                wire.coords = [start, end]
 
-            # first we attempt to find the shortest route 
-            path = bfs_route(chip, start, end, max_extra_length = 0, allow_short_circuit=False)
-            if path is not None:
-                print("Found shortest route")
-                # we have found a viable path and insert the coords in the wire
-                for coord in path:
-                    wire.append_wire_segment(coord)
-
-
-        # we now start iterating over the max_offset
-        for wire in chip.wires:
-            # wire is already connected so we skip
-            if wire.is_wire_connected():
-                continue 
-
-            start = wire.gates[0]  # gate1
-            end = wire.gates[1]    # gate2
-
-            # we overwrite the coords to be safe, since we are trying a new set:
-            wire.coords = [start, end]
-
-            # we check for routes and iterate over offset using our bfs_route utility function
-            found_route = False
-            for offset in range(max_offset + 1):
-                path = bfs_route(chip, start, end, max_extra_length=offset, allow_short_circuit=False)
+                # first we attempt to find the shortest route 
+                path = bfs_route(chip, start, end, max_extra_length = offset, allow_short_circuit=False)
                 if path is not None:
-                    print(f"Found route with an offset of {offset}")
+                    print(f"Found shortest route with offset = {offset} and for wire = {wire.gates}")
                     # we have found a viable path and insert the coords in the wire
                     for coord in path:
                         wire.append_wire_segment(coord)
-                    found_route = True
-                    break
             
-            # if we have not found a route for a wire with this max offset, we allow short_circuit
-            if not found_route and allow_short_circuit:
-                force_path = bfs_route(chip, start, end, max_extra_length=1000, allow_short_circuit=True)
-                # we add the path coords to the wire
-                if force_path is not None:
-                    print(f"Found route while allowing short circuit")
-                    for coord in force_path:
-                        wire.append_wire_segment(coord)
+        # if we have not found a route for a wire with this max offset, we allow short_circuit
+        if allow_short_circuit:
+            for wire in chip.wires:
+                if not wire.is_wire_connected():
+
+                    start = wire.gates[0]  # gate1
+                    end = wire.gates[1]    # gate2
+
+                    force_path = bfs_route(chip, start, end, max_extra_length=1000, allow_short_circuit=True)
+                    # we add the path coords to the wire
+                    if force_path is not None:
+                        print(f"Found route while allowing short circuit")
+                        for coord in force_path:
+                            wire.append_wire_segment(coord)
 
     if chip.not_fully_connected:
         print("Warning: Not all wires were able to be connected")
