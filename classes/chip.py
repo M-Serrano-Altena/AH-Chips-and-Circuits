@@ -201,6 +201,8 @@ class Chip:
 
     def show_grid(self, image_filename: str|None = None) -> None:
         """Show (and save) a 3D interactive plot of a given grid configuration"""
+        total_cost = self.calc_total_grid_cost()
+        intersect_amount = self.get_wire_intersect_amount()
         camera_eye = dict(x=-1.3, y=-1.3, z=0.6)
 
         gates_x, gates_y, gates_z = zip(*self.gates.values())
@@ -216,7 +218,7 @@ class Chip:
             gate_2_id = self.coords_to_gate_map[gate_2_coords]
 
             wire_x, wire_y, wire_z = zip(*wire.coords)
-            wire_plot = go.Scatter3d(x=wire_x, y=wire_y, z=wire_z, mode='lines', line=dict(color='blue', width=3), name='Wires', showlegend=i == 0, hovertemplate=f'Wire {gate_1_id} -> {gate_2_id}: ' + '(%{x}, %{y}, %{z})<extra></extra>')
+            wire_plot = go.Scatter3d(x=wire_x, y=wire_y, z=wire_z, mode='lines', line=dict(width=3), name='Wires', showlegend=i == 0, hovertemplate=f'Wire {gate_1_id} -> {gate_2_id}: ' + '(%{x}, %{y}, %{z})<extra></extra>')
             data.append(wire_plot)
 
         fig = go.Figure(data=data)
@@ -233,7 +235,7 @@ class Chip:
                     up=dict(x=0, y=0, z=1),  # Up the camera view
                 ),
             ),
-            title=f"Chip {self.chip_id}, Net {self.net_id}"
+            title=f"Chip {self.chip_id}, Net {self.net_id} (Cost = {total_cost}, Intersect Amount = {intersect_amount})"
         )
 
         config = {
