@@ -78,5 +78,3 @@ $$\boxed{L_{max} = 23rk - 8(r + k)}$$
 Om een idee te geven van de toename van de state space in 3D is dit de state space van de $3 \times 3$ als we ook kabels tot $8$ hoog mogen zetten:
 
 $$\Omega_{3 \times 3} = 3^{23 \cdot 3 \cdot 3 - 8(3 + 3) - 2} + 3^{23 \cdot 3 \cdot 3 - 8(3 + 3) - 1} + 3^{23 \cdot 3 \cdot 3 - 8(3 + 3)} = 1.1 \cdot 10^{76}$$
-
-
