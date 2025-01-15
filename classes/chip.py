@@ -134,12 +134,10 @@ class Chip:
         wires_coords_set = [set(wire.coords) for wire in self.wires]
         shared_coords = set()
 
-        for wire_segment_set_1 in wires_coords_set:
-            for wire_segment_set_2 in wires_coords_set:
-
-                # don't compare wire segments from the same wire
-                if wire_segment_set_1 == wire_segment_set_2:
-                    continue
+        for i in range(len(wires_coords_set)):
+            for j in range(i):
+                wire_segment_set_1 = wires_coords_set[i]
+                wire_segment_set_2 = wires_coords_set[j]
                 
                 # add all wire segments that are shared between different wires
                 shared_coords |= wire_segment_set_1 & wire_segment_set_2
@@ -150,10 +148,21 @@ class Chip:
 
     def get_wire_intersect_amount(self) -> int:
         """
-        Get the amount of intersections between all wires
-        (2 wire segments crossing)
+        Get the amount of intersections (2 wire segments crossing) between all wires.
+        If 3 wires intersect at 1 point, it counts as 2 intersections.
+        
         """
-        return len(self.get_intersection_coords())
+        wires_coords_set = [set(wire.coords) for wire in self.wires]
+        intersection_coords = self.get_intersection_coords()
+        intersection_counter = 0
+
+        # check how many cables are involved in intersection
+        for intersection_coord in intersection_coords:
+            amount_of_intersections = sum(intersection_coord in wire_segment_set for wire_segment_set in wires_coords_set) - 1
+            if amount_of_intersections > 0:
+                intersection_counter += amount_of_intersections
+
+        return intersection_counter
     
     
     @staticmethod
