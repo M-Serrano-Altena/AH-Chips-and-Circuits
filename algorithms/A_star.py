@@ -111,13 +111,15 @@ class A_star:
     def solve_multiple_netlist_orders(self) -> list[list[Coords_3D]]:
         best_wire_list = []
         lowest_cost = inf
-        for netlist in itertools.permutations(self.chip.netlist):
+        for i, netlist in enumerate(itertools.permutations(self.chip.netlist)):
             self.chip.netlist = netlist
+            print(i, ":", self.chip.netlist)
             self.solve()
             self.chip.add_entire_wires(self.all_wire_segments_list)
             cost = self.chip.calc_total_grid_cost()
             if cost < lowest_cost:
                 lowest_cost = cost
+                print(lowest_cost)
                 best_wire_list = self.all_wire_segments_list
 
             # if the lowest found cost is the lowest theoretical cost then the optimal solution has been found
@@ -166,6 +168,7 @@ class A_star:
         self.frontier = []
         self.start_gate = Node(start_coords, parent=None)
         self.frontier.append(self.start_gate)
+        print("start frontier:", self.frontier)
 
         print_counter = 0
 
