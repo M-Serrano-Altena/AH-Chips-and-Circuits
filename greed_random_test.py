@@ -1,13 +1,14 @@
 # main.py (or any script you prefer)
 from classes.chip import Chip
-from algorithms.greed_random import greed_random_algo
+from algorithms import greed as gr
 
 # 1) we initialize the chip
 base_data_path = r"data/"
-chip0 = Chip(base_data_path, chip_id=2, net_id=7, output_folder="output")
+chip0 = Chip(base_data_path, chip_id=2, net_id=9, output_folder="output")
 
 # 2) we use the algo with offset
-greed_random_algo(chip0, max_offset=80, allow_short_circuit=True)
+greedy = gr.Greed_random(chip0, 20, True, True)
+greedy.run()
 
 # 3) we check the final costs
 print("Total wire cost:", chip0.calc_total_grid_cost())
