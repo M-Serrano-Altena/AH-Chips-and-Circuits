@@ -1,6 +1,6 @@
 # main.py (or any script you prefer)
-from classes.chip import Chip
-from algorithms.greed import Greed as gr
+from src.classes.chip import Chip
+from src.algorithms.greed import Greed as gr
 
 # 1) we initialize the chip
 base_data_path = r"data/"
