@@ -108,6 +108,25 @@ class A_star:
         extra_cost = self.get_extra_wire_cost(current_node)
         return manhattan_distance + exising_path_cost + extra_cost
     
+    def solve_multiple_netlist_orders(self) -> list[list[Coords_3D]]:
+        best_wire_list = []
+        lowest_cost = inf
+        for netlist in itertools.permutations(self.chip.netlist):
+            self.chip.netlist = netlist
+            self.solve()
+            self.chip.add_entire_wires(self.all_wire_segments_list)
+            cost = self.chip.calc_total_grid_cost()
+            if cost < lowest_cost:
+                lowest_cost = cost
+                best_wire_list = self.all_wire_segments_list
+
+            # if the lowest found cost is the lowest theoretical cost then the optimal solution has been found
+            if lowest_cost == self.chip.manhatten_distance_sum:
+                return best_wire_list
+
+        return best_wire_list
+            
+    
 
     def solve(self) -> list[list[Coords_3D]]:
         """
@@ -120,17 +139,20 @@ class A_star:
             gate_1_id, gate_2_id = list(connection.items())[0]
             gate_1_coords = self.chip.gates[gate_1_id]
 
-            # temporary goal node
+            # goal node
             gate_2_coords = self.chip.gates[gate_2_id]
 
             wire_segment_list = self.solve_single_wire(start_coords=gate_1_coords, goal_coords=gate_2_coords)
+            if wire_segment_list is None:
+                return []
+            
             self.all_wire_segments_list.append(wire_segment_list)
             self.all_wire_segments_set.append(set(wire_segment_list))
 
         return self.all_wire_segments_list
 
             
-    def solve_single_wire(self, start_coords: Coords_3D, goal_coords: Coords_3D) -> list[Coords_3D]:
+    def solve_single_wire(self, start_coords: Coords_3D, goal_coords: Coords_3D) -> list[Coords_3D]|None:
         """
         Solve the routing problem for a single wire between two gates
         
@@ -147,9 +169,10 @@ class A_star:
 
         print_counter = 0
 
-        while True:
+        while len(self.frontier) < 100000:
+            # no solution
             if len(self.frontier) == 0:
-                raise Exception("No solution")
+                return None
 
             node = sorted(self.frontier, key=lambda node: node.cost)[0]
             self.frontier.remove(node)
@@ -170,6 +193,9 @@ class A_star:
 
             
             self.add_neighbours_to_frontier(node, goal_coords)
+
+        # no found solution
+        return None
 
 
     def add_neighbours_to_frontier(self, node: Node, goal_coords: Coords_3D) -> None:
@@ -207,7 +233,8 @@ class A_star:
             if not self.allow_intersections:
                 if neighbour_node.cost >= 300:
                     continue
-
+            
+            # don't add nodes above the max cost
             if neighbour_node.cost > self.max_cost:
                 continue
 
