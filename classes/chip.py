@@ -32,7 +32,7 @@ def convert_to_matrix_coords(coords, matrix_y_size):
     return matrix_y_size - 1 - y_coord, x_coord
 
 class Chip:
-    def __init__(self, base_data_path, chip_id, net_id, output_folder="output/"):
+    def __init__(self, base_data_path, chip_id, net_id, padding: int=1, output_folder="output/"):
         self.chip_id = chip_id
         self.net_id = net_id
         self.output_folder = output_folder
@@ -52,10 +52,9 @@ class Chip:
         self.coords_to_gate_map = {coords: gate_id for gate_id, coords in self.gates.items()}
         self.gate_coords = set(self.gates.values())
 
-
         # grid size
-        self.grid_size_x = max(coords[0] for coords in self.gates.values()) + 2
-        self.grid_size_y = max(coords[1] for coords in self.gates.values()) + 2
+        self.grid_size_x = max(coords[0] for coords in self.gates.values()) + 1 + padding
+        self.grid_size_y = max(coords[1] for coords in self.gates.values()) + 1 + padding
         self.grid_size_z = 8
         self.grid_shape = (self.grid_size_x, self.grid_size_y, self.grid_size_z)
 
@@ -72,6 +71,9 @@ class Chip:
                 manhattan_distance(self.gates[list(connection.keys())[0]], self.gates[list(connection.values())[0]])
             )
         )
+
+        self.manhatten_distance_sum = sum(manhattan_distance(self.gates[list(connection.keys())[0]], self.gates[list(connection.values())[0]]) for connection in self.netlist)
+
         
         # reverse all netlist connections
         netlist_reverse = [{value: key for key, value in dicts.items()} for dicts in self.netlist]

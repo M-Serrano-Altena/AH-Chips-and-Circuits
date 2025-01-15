@@ -22,7 +22,7 @@ if len(argv) == 3:
 chip = Chip(base_data_path, chip_id=chip_id, net_id=net_id, output_folder=OUTPUT_FOLDER)
 algorithm = A_star(chip, allow_intersections=True, max_cost=500)
 
-all_wire_segments = algorithm.solve()
+all_wire_segments = algorithm.solve_multiple_netlist_orders()
 
 intersection_wires = [
     [(1, 5, 0), (2, 5, 0), (3, 5, 0), (4, 5, 0), (5, 5, 0), (6, 5, 0)],
@@ -40,7 +40,7 @@ double_wire_intersection = [
     [(4, 4, 0), (3, 4, 0), (3, 4, 1), (3, 3, 1), (4, 3, 1), (5, 3, 1), (6, 3, 1), (7, 3, 1), (7, 4, 1), (7, 5, 1), (7, 6, 1), (7, 6, 0), (6, 6, 0), (5, 6, 0), (4, 6, 0), (3, 6, 0), (2, 6, 0), (1, 6, 0), (1, 5, 0)]
 ]
 
-chip.add_entire_wires(intersection_wires)
+chip.add_entire_wires(all_wire_segments)
 
 base_save_name = f"chip_{chip_id}_net_{net_id}"
 plot_save_name = "layout_" + base_save_name
