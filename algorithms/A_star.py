@@ -1,12 +1,14 @@
 from classes.chip import Chip
 from algorithms.utils import Node, Coords_3D, INTERSECTION_COST, COLLISION_COST
 import itertools
+from math import inf
+import random
 
 class A_star:
     """
     A* pathfinding algorithm implementation for routing wires in a chip
     """
-    def __init__(self, chip: Chip, allow_intersections=True):
+    def __init__(self, chip: Chip, allow_intersections=True, max_cost: int|float=inf, random_seed: int=0):
         """
         Initialize the A_star solver.
         
@@ -16,6 +18,9 @@ class A_star:
         """
         self.chip = chip
         self.allow_intersections = allow_intersections
+        self.max_cost = max_cost
+        
+        random.seed(random_seed)
 
         self.frontier: list[Node] = []
         self.all_wire_segments_list: list[list[Coords_3D]] = []
@@ -202,5 +207,8 @@ class A_star:
             if not self.allow_intersections:
                 if neighbour_node.cost >= 300:
                     continue
+
+            if neighbour_node.cost > self.max_cost:
+                continue
 
             self.frontier.append(neighbour_node)
