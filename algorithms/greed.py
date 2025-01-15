@@ -6,11 +6,10 @@ import random
 
 class Greed:
     """
-    Explanation of algorithm:
-    we first make wire connections shortest possible without any short circuit (offset = 0)
-    if shortest possible not possible check for less short for each cable iteratively (offset + 2, 4, 6 untill k)
-    if still no solution found, and allow_short_circuit = True, we connect ignoring short circuit
-    optional: sort wires, first fills in the wires with the lowest manhatthan distance
+    First: makes wire connections shortest possible without any short circuit (offset = 0)
+    If shortest possible not possible: check for less short for each cable iteratively (offset + 2, 4, 6 untill k)
+    If still no solution found (and allow_short_circuit = True): we connect ignoring short circuit
+    Optional: sort wires, first fills in the wires with the lowest manhatthan distance
     """
 
     def __init__(self, chip: "Chip", max_offset: int = 6, allow_short_circuit: bool = False, sort_wires: bool = False):
@@ -277,3 +276,6 @@ class Greed_random(Greed):
                 return path[:-1]
         
         return None
+    
+    
+

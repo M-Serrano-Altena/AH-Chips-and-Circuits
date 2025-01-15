@@ -1,12 +1,3 @@
-import random
-from typing import TYPE_CHECKING
-
-# only imported for typing to avoid circular importing
-if TYPE_CHECKING:
-    from classes.chip import Chip
-    from classes.wire import Wire
-
-
 INTERSECTION_COST = 300
 COLLISION_COST = 1000000
 
