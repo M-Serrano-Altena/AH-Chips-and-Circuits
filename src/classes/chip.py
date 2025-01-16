@@ -58,6 +58,16 @@ class Chip:
         self.grid_size_z = 8
         self.grid_shape = (self.grid_size_x, self.grid_size_y, self.grid_size_z)
 
+        # initate occupancy grid self.occupancy[x][y][z] is None for free item
+        self.occupancy = [[[set() for _ in range(self.grid_size_z)] 
+                           for _ in range(self.grid_size_y)]
+                           for _ in range(self.grid_size_x)
+                           ]
+        
+        # we add the coordinates of the gates as identifiers in grid
+        for (x, y, z) in self.gate_coords:
+            self.occupancy[x][y][z].add("GATE")
+
         self.wires: list[Wire] = []
 
         # read netlist

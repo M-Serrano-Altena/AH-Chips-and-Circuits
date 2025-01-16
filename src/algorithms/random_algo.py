@@ -25,15 +25,19 @@ class Random_random(Greed_random):
             start = wire.gates[0]  # gate1
             end = wire.gates[1]    # gate2
 
+            # we identify the wire:
+            wire_id = f"{start}_{end}"
+
             wire.coords = [start, end] # reset the coords to just the gates
 
-            max_length = self.max_offset + manhattan_distance(start, end)
+            min_length = manhattan_distance(start, end)
+            max_length = self.max_offset + min_length
 
-            # generate and shuffle possible offsets [1, 2, 3, ..., max_length]
-            max_length_candidates = list(range(1, max_length + 1))
-            random.shuffle(max_length_candidates)
+            # generate and shuffle possible lengths: [min_length, min_length + 1, ..., max_length]
+            length_candidates = list(range(min_length - 1, max_length + 1, 2))
+            random.shuffle(length_candidates)
 
-            for random_length in max_length_candidates:
+            for random_length in length_candidates:
                 path = bfs_route_exact_length(
                     chip = self.chip,
                     start = start, 
@@ -45,6 +49,9 @@ class Random_random(Greed_random):
                     print(f"[Random] Found path with random_length ={random_length} for wire={wire.gates}")
                     # append the path coords to the wire
                     for coord in path:
+                        (x, y, z) = coord
+                        # we use the coordinates of the gates as identifier in the 3D occupancy matrix
+                        self.chip.occupancy[x][y][z].add(wire_id)
                         wire.append_wire_segment(coord)
                     break
 
@@ -87,12 +94,14 @@ def bfs_route_exact_length(chip: Chip, start: Coords_3D, end: Coords_3D, exact_l
             if neighbour in path:
                 continue
 
-            # if wiresegment cause wire_collision we continue 
-            if Greed.wire_collision(chip, neighbour, current):
+            (nx, ny, nz) = neighbour 
+
+            # we continue if grid is occupied by another gate (occupancy grid only contains gate coords) which is not its own
+            if "GATE" in chip.occupancy[nx][ny][nz] and neighbour != end:
                 continue
 
-            # if neighbour contains another gate we continue
-            if Greed.gate_occupied(chip, neighbour, {start, end}):
+            # if wiresegment cause wire_collision we continue 
+            if Greed.wire_collision(chip, neighbour, current):
                 continue
 
             newDist = dist + 1
