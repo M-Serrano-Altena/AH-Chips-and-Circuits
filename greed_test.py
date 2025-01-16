@@ -4,7 +4,7 @@ from src.algorithms.greed import Greed as gr
 
 # 1) we initialize the chip
 base_data_path = r"data/"
-chip0 = Chip(base_data_path, chip_id=1, net_id=4, output_folder="output")
+chip0 = Chip(base_data_path, chip_id=0, net_id=1, output_folder="output")
 
 # 2) we use the algo with offset
 greedy = gr(chip0, 10, True, True)

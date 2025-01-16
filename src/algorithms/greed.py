@@ -249,9 +249,9 @@ class Greed:
     
     def shortest_cable(self, 
         chip: 'Chip', start: Coords_3D, end: Coords_3D, 
-        offset: int=0, allow_short_circuit: bool=False, max_only: bool = False) -> list[Coords_3D]|None:
+        offset: int=0, allow_short_circuit: bool=False) -> list[Coords_3D]|None:
 
-        return self.bfs_route(chip, start, end, offset, allow_short_circuit, max_only)
+        return self.bfs_route(chip, start, end, offset, allow_short_circuit)
     
 
 class Greed_random(Greed):
@@ -269,7 +269,7 @@ class Greed_random(Greed):
     
     def shortest_cable(self, 
         chip: 'Chip', start: Coords_3D, end: Coords_3D, 
-        offset: int=0, allow_short_circuit: bool=False, max_only: bool = False) -> list[Coords_3D]|None:
+        offset: int=0, allow_short_circuit: bool=False) -> list[Coords_3D]|None:
         """Adds a shortest possible wire route to the wire variable (chosen at random)"""
 
         random_limit = 1000
