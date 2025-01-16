@@ -26,11 +26,11 @@ class Random_random(Greed_random):
             end = wire.gates[1]    # gate2
 
             wire.coords = [start, end] # reset the coords to just the gates
-
+            minimal_distance_gates = manhattan_distance(start, end)
             max_length = self.max_offset + manhattan_distance(start, end)
 
             # generate and shuffle possible offsets [1, 2, 3, ..., max_length]
-            max_length_candidates = list(range(1, max_length + 1))
+            max_length_candidates = list(range(minimal_distance_gates - 1, max_length + 1, 2))
             random.shuffle(max_length_candidates)
 
             for random_length in max_length_candidates:
@@ -42,10 +42,9 @@ class Random_random(Greed_random):
                 )
 
                 if path is not None:
-                    print(f"[Random] Found path with random_length ={random_length} for wire={wire.gates}")
+                    print(f"[Random] Found path with random_length = {random_length} for wire = {wire.gates}")
                     # append the path coords to the wire
-                    for coord in path:
-                        wire.append_wire_segment(coord)
+                    wire.append_wire_segment_list(path)
                     break
 
             # we let this loop untill all wires have been tried for random offsets
@@ -71,6 +70,7 @@ def bfs_route_exact_length(chip: Chip, start: Coords_3D, end: Coords_3D, exact_l
     while queue:
         (current, path) = queue.popleft()
         dist = len(path)
+        path_set = set(path)
 
         # check for success
         if current == end and dist == exact_length:
@@ -84,7 +84,7 @@ def bfs_route_exact_length(chip: Chip, start: Coords_3D, end: Coords_3D, exact_l
         for neighbour in Greed.get_neighbours(chip, current):
 
             # if the coordinate is already in its own path we continue
-            if neighbour in path:
+            if neighbour in path_set:
                 continue
 
             # if wiresegment cause wire_collision we continue 

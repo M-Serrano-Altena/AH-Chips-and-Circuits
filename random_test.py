@@ -4,7 +4,7 @@ from src.algorithms import random_algo as ra
 
 # 1) we initialize the chip
 base_data_path = r"data/"
-chip0 = Chip(base_data_path, chip_id=1, net_id=4, output_folder="output")
+chip0 = Chip(base_data_path, chip_id=0, net_id=1, output_folder="output")
 
 # 2) we use the algo with offset
 random_random = ra.Random_random(chip0, 30, True, True)

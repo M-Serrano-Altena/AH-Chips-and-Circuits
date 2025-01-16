@@ -231,6 +231,14 @@ class Greed_random(Greed):
     if still no solution found, and allow_short_circuit = True, we connect ignoring short circuit
     """
 
+    def __init__(self, chip: "Chip", max_offset: int = 6, allow_short_circuit: bool = False, sort_wires: bool = False, random_seed: int|None=None):
+        # Use Greed class init
+        super().__init__(chip, max_offset, allow_short_circuit, sort_wires)
+        
+        # add a random seed if given
+        if random_seed is not None:
+            random.seed(random_seed)
+
     def get_wire_order(self, wires):
 
         random.shuffle(wires)
