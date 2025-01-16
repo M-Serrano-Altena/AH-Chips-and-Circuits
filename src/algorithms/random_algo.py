@@ -1,12 +1,7 @@
-from classes.chip import Chip
-from algorithms.utils import *
-<<<<<<< HEAD:algorithms/random_algo.py
-from algorithms.greed import Greed_random, Greed
+from src.classes.chip import Chip
+from src.algorithms.utils import *
+from src.algorithms.greed import Greed_random, Greed
 from collections import deque
-=======
-from src.algorithms.greed import Greed_random
->>>>>>> 6bdf75443bac0d3501cb5ff572dcd6a89f612095:src/algorithms/random_algo.py
-
 import random
 
 class Random_random(Greed_random):

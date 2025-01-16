@@ -1,6 +1,6 @@
 # main.py (or any script you prefer)
-from classes.chip import Chip
-from algorithms import random_algo as ra
+from src.classes.chip import Chip
+from src.algorithms import random_algo as ra
 
 # 1) we initialize the chip
 base_data_path = r"data/"
