@@ -70,7 +70,7 @@ def bfs_route_exact_length(chip: Chip, start: Coords_3D, end: Coords_3D, exact_l
     visited = set()  
 
     while queue:
-        current, path = queue.popleft()
+        (current, path) = queue.popleft()
         dist = len(path)
 
         # check for success
@@ -82,10 +82,23 @@ def bfs_route_exact_length(chip: Chip, start: Coords_3D, end: Coords_3D, exact_l
             continue
 
         # explore
-        for neighbor in Greed.get_neighbours(chip, current):
+        for neighbour in Greed.get_neighbours(chip, current):
+
+            # if the coordinate is already in its own path we continue
+            if neighbour in path:
+                continue
+
+            # if wiresegment cause wire_collision we continue 
+            if Greed.wire_collision(chip, neighbour, current):
+                continue
+
+            # if neighbour contains another gate we continue
+            if Greed.gate_occupied(chip, neighbour, {start, end}):
+                continue
+
             newDist = dist + 1
-            if (neighbor, newDist) not in visited:
-                visited.add((neighbor, newDist))
-                queue.append((neighbor, path + [neighbor]))
+            if (neighbour, newDist) not in visited:
+                visited.add((neighbour, newDist))
+                queue.append((neighbour, path + [neighbour]))
 
     return None

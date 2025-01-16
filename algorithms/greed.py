@@ -132,7 +132,7 @@ class Greed:
                         continue
                     
                     # if wiresegment cause wire_collision we continue 
-                    if self.wire_collision(neighbour, current):
+                    if self.wire_collision(chip, neighbour, current):
                         continue
 
                     visited.add(neighbour)
@@ -141,11 +141,12 @@ class Greed:
 
         return None
     
-    def wire_collision(self, neighbour: Coords_3D, current: Coords_3D) -> bool:
+    @staticmethod
+    def wire_collision(chip: Chip, neighbour: Coords_3D, current: Coords_3D) -> bool:
         """Checks if wiresegment causes a collision in chip"""
 
         # check if the line piece already exists in chip, if it does we skip 
-        for wire in self.chip.wires:
+        for wire in chip.wires:
             for i in range(len(wire.coords) - 1):
                 # two consecutive coords in the wire
                 wire_seg_1 = wire.coords[i]
@@ -182,18 +183,34 @@ class Greed:
         return neighbours
     
     @staticmethod
+    def gate_occupied(chip: 'Chip', coord: Coords_3D, own_gates: set[Coords_3D] = None) -> bool:
+        """
+        Checks if 'coord' is occupied by any gate, except its own
+        """
+
+        # if coord is own_gate return false
+        if own_gates and (coord in own_gates): 
+            return False
+        
+        # if gate is in general gate coords, return true
+        gate_coords = set(chip.gates.values())
+        if coord in gate_coords:
+            return True
+        
+        return None
+    
+    @staticmethod
     def is_occupied(chip: 'Chip', coord: Coords_3D, own_gates: set[Coords_3D] = None) -> bool:
         """ 
         Checks if `coord` is already occupied by any wire
         (Optionally checks if the coord is its own gate, to return false since occupation is from its own wire.) 
         """
 
-        if own_gates and (coord in own_gates):
-            return False
+        # check if gate is occupied, or own gate or none
+        gate_occupied = Greed.gate_occupied(chip, coord, own_gates)
 
-        gate_coords = set(chip.gates.values())
-        if coord in gate_coords:
-            return True
+        if gate_occupied is not None:
+            return gate_occupied
 
         for wire in chip.wires:
             if coord in wire.coords:
@@ -261,7 +278,7 @@ class Greed_random(Greed):
                 current_coord = tuple(current_coord[i] + move[i] for i in range(len(current_coord)))
 
                 # continue if collision is found
-                if self.wire_collision(previous_coord, current_coord):
+                if self.wire_collision(chip, previous_coord, current_coord):
                     continue
                 
                 # if short circuit is not allowed, we continue if we short circuit
