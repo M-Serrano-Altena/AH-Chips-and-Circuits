@@ -1,6 +1,6 @@
 import os
-from classes.chip import Chip
-from algorithms.A_star import A_star
+from src.classes.chip import Chip
+from src.algorithms.A_star import A_star
 from sys import argv
 
 # travel to base folder
