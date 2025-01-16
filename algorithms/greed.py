@@ -277,5 +277,5 @@ class Greed_random(Greed):
         
         return None
     
-    
+
 

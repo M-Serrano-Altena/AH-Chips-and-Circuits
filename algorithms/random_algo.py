@@ -1,5 +1,7 @@
+from classes.chip import Chip
 from algorithms.utils import *
-from algorithms.greed import Greed_random
+from algorithms.greed import Greed_random, Greed
+from collections import deque
 
 import random
 
@@ -26,22 +28,22 @@ class Random_random(Greed_random):
 
             wire.coords = [start, end] # reset the coords to just the gates
 
-            # generate and shuffle possible offsets [0, 2, 4, ..., max_offset]
-            offset_candidates = list(range(0, self.max_offset + 1, 2))
-            random.shuffle(offset_candidates)
+            max_length = self.max_offset + manhattan_distance(start, end)
 
-            for offset in offset_candidates:
-                path = self.bfs_route(
-                    chip=self.chip,
-                    start=start,
-                    end=end,
-                    offset=offset,
-                    allow_short_circuit=False,
-                    max_only=True  # route must be exactly manhattan_dist + offset
+            # generate and shuffle possible offsets [1, 2, 3, ..., max_length]
+            max_length_candidates = list(range(1, max_length + 1))
+            random.shuffle(max_length_candidates)
+
+            for random_length in max_length_candidates:
+                path = bfs_route_exact_length(
+                    chip = self.chip,
+                    start = start, 
+                    end = end, 
+                    exact_length = random_length
                 )
 
                 if path is not None:
-                    print(f"[Random] Found path with offset={offset} for wire={wire.gates}")
+                    print(f"[Random] Found path with random_length ={random_length} for wire={wire.gates}")
                     # append the path coords to the wire
                     for coord in path:
                         wire.append_wire_segment(coord)
@@ -54,3 +56,36 @@ class Random_random(Greed_random):
         if self.chip.not_fully_connected:
             print("[Random] Falling back to parent (Greed) approach")
             super().run()
+
+    from collections import deque
+
+@staticmethod
+def bfs_route_exact_length(chip: Chip, start: Coords_3D, end: Coords_3D, exact_length: int) -> list[Coords_3D]|None:
+    """
+    This function finds a route from start_gate to end_gate of exactly the length given 
+    """
+    # queue consists of tuple entries of (current node, [path])
+    queue = deque([(start, [start])])
+    # we store (node, dist) instead of node, this way we can make inefficient routes
+    visited = set()  
+
+    while queue:
+        current, path = queue.popleft()
+        dist = len(path)
+
+        # check for success
+        if current == end and dist == exact_length:
+            return path[1:-1] if dist > 2 else []
+
+        # prune if we exceed exact_length
+        if dist > exact_length:
+            continue
+
+        # explore
+        for neighbor in Greed.get_neighbours(chip, current):
+            newDist = dist + 1
+            if (neighbor, newDist) not in visited:
+                visited.add((neighbor, newDist))
+                queue.append((neighbor, path + [neighbor]))
+
+    return None

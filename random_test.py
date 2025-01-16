@@ -1,13 +1,13 @@
 # main.py (or any script you prefer)
 from classes.chip import Chip
-from algorithms.random_algo import Random_random as rr
+from algorithms import random_algo as ra
 
 # 1) we initialize the chip
 base_data_path = r"data/"
 chip0 = Chip(base_data_path, chip_id=2, net_id=9, output_folder="output")
 
 # 2) we use the algo with offset
-random_random = rr(chip0, 20, True, True)
+random_random = ra.Random_random(chip0, 20, True, True)
 random_random.run()
 
 # 3) we check the final costs
