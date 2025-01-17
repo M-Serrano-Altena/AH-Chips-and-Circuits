@@ -144,7 +144,7 @@ class Greed:
                         continue
 
                     # if occupied by wire, and we do not allow short circuit, we continue
-                    if not allow_short_circuit and occupant and "GATE" not in occupant:
+                    if not allow_short_circuit and len(occupant) > 0 and "GATE" not in occupant:
                         continue
 
                     visited.add(neighbour)
@@ -158,7 +158,7 @@ class Greed:
         """Checks if wiresegment causes a collision in chip"""
 
         (nx, ny, nz) = neighbour
-        neighbour_occupancy = chip.occupancy[nx][ny][nz] 
+        neighbour_occupancy = chip.occupancy[nx][ny][nz]
 
         (cx, cy, cz) = current
         current_occupancy = chip.occupancy[cx][cy][cz] 
@@ -181,10 +181,7 @@ class Greed:
         # if match in wire_id without gates, we have wirecollison 
         shared_wire = occupant_n_no_gate & occupant_c_no_gate
 
-        if shared_wire:
-            return True
-
-        return False
+        return len(shared_wire) > 0
         
     @staticmethod    
     def get_neighbours(chip: 'Chip', coord: Coords_3D) -> list[Coords_3D]:
