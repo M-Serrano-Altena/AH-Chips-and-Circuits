@@ -178,6 +178,7 @@ class Greed:
         shared_wire = occupant_n_no_gate & occupant_c_no_gate
          
         # if match in wires, we have wirecollison if the coordinates in the wire class are subsequent
+        # if this is not the case, we are dealing with the same wire running parallel, which does not cause wire collision when crossing
 
         if shared_wire:
             for wire_piece in shared_wire:
