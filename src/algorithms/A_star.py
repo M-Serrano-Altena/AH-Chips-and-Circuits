@@ -3,12 +3,13 @@ from src.algorithms.utils import Node, Coords_3D, INTERSECTION_COST, COLLISION_C
 import itertools
 from math import inf
 import random
+import copy
 
 class A_star:
     """
     A* pathfinding algorithm implementation for routing wires in a chip
     """
-    def __init__(self, chip: Chip, allow_intersections=True, max_cost: int|float=inf, random_seed: int=0):
+    def __init__(self, chip: Chip, allow_intersections=True, max_cost: int|float=inf, random_seed: int|None=None, best_n_nodes: int|None = None):
         """
         Initialize the A_star solver.
         
@@ -19,8 +20,10 @@ class A_star:
         self.chip = chip
         self.allow_intersections = allow_intersections
         self.max_cost = max_cost
+        self.best_n_nodes = best_n_nodes
         
-        random.seed(random_seed)
+        if random_seed is not None:
+            random.seed(random_seed)
 
         self.frontier: list[Node] = []
         self.all_wire_segments_list: list[list[Coords_3D]] = []
@@ -108,7 +111,30 @@ class A_star:
         extra_cost = self.get_extra_wire_cost(current_node)
         return manhattan_distance + exising_path_cost + extra_cost
     
-    def solve_multiple_netlist_orders(self) -> list[list[Coords_3D]]:
+    def solve_n_random_netlist_orders(self, random_netlist_order_amt: int) -> list[list[Coords_3D]]:
+        best_wire_list = []
+        lowest_cost = inf
+        netlist_permutations = list(itertools.permutations(self.chip.netlist))
+        random.shuffle(netlist_permutations)
+        netlist_permutations = netlist_permutations[:random_netlist_order_amt]
+        for i, netlist in enumerate(netlist_permutations):
+            self.chip.netlist = netlist
+            print(i, ":", self.chip.netlist)
+            self.solve()
+            self.chip.add_entire_wires(self.all_wire_segments_list)
+            cost = self.chip.calc_total_grid_cost()
+            if cost < lowest_cost:
+                lowest_cost = cost
+                print("lowest cost:", lowest_cost)
+                best_wire_list = copy.deepcopy(self.all_wire_segments_list)
+
+            # if the lowest found cost is the lowest theoretical cost then the optimal solution has been found
+            if lowest_cost == self.chip.manhatten_distance_sum:
+                return best_wire_list
+
+        return best_wire_list
+
+    def solve_all_netlist_orders(self) -> list[list[Coords_3D]]:
         best_wire_list = []
         lowest_cost = inf
         for i, netlist in enumerate(itertools.permutations(self.chip.netlist)):
@@ -168,8 +194,6 @@ class A_star:
         self.frontier = []
         self.start_gate = Node(start_coords, parent=None)
         self.frontier.append(self.start_gate)
-        print("start frontier:", self.frontier)
-
         print_counter = 0
 
         while len(self.frontier) < 100000:
@@ -177,10 +201,15 @@ class A_star:
             if len(self.frontier) == 0:
                 return None
 
-            node = sorted(self.frontier, key=lambda node: node.cost)[0]
-            self.frontier.remove(node)
+            sorted_frontier = sorted(self.frontier, key=lambda node: node.cost)
+            node = sorted_frontier[0]
 
             frontier_size = len(self.frontier)
+            if self.best_n_nodes is not None and frontier_size > self.best_n_nodes:
+                self.frontier = sorted_frontier[:self.best_n_nodes]
+
+            self.frontier.remove(node)
+                
             if frontier_size / 10000 > print_counter:
                 print("frontier size:", frontier_size)
                 print_counter += 1
@@ -222,6 +251,10 @@ class A_star:
             if any(neighbour_coords[i] < 0 or neighbour_coords[i] >= self.chip.grid_shape[i] for i in range(coords_dim)):
                 continue
 
+            # exclude neighbours that are already in the wire path
+            if self.coord_in_node_path(neighbour_coords, node):
+                continue
+
             neighbour_node = Node(state=neighbour_coords, parent=node)
             neighbour_node.cost = self.heuristic_function(neighbour_node, goal_coords=goal_coords)
 
@@ -230,8 +263,8 @@ class A_star:
                 continue
             
             # # don't add gates other than start and goal gate to wire
-            # if neighbour_coords in self.chip.gate_coords and neighbour_coords not in {self.start_gate.state, goal_coords}:
-            #     continue
+            if neighbour_coords in self.chip.gate_coords and neighbour_coords not in {self.start_gate.state, goal_coords}:
+                continue
 
             if not self.allow_intersections:
                 if neighbour_node.cost >= 300:
@@ -242,3 +275,14 @@ class A_star:
                 continue
 
             self.frontier.append(neighbour_node)
+
+
+    @staticmethod
+    def coord_in_node_path(coord: Coords_3D, node: Node):
+        cursor = node
+        while cursor is not None:
+            if coord == cursor.state:
+                return True
+            cursor = cursor.parent
+
+        return False

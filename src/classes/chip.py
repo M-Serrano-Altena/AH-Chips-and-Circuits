@@ -58,11 +58,16 @@ class Chip:
         self.grid_size_z = 8
         self.grid_shape = (self.grid_size_x, self.grid_size_y, self.grid_size_z)
 
-        # initate occupancy grid self.occupancy[x][y][z] is None for free item
-        self.occupancy: list[list[list[set]]] = [[[set() for _ in range(self.grid_size_z)] 
-                           for _ in range(self.grid_size_y)]
-                           for _ in range(self.grid_size_x)
-                           ]
+        # initate occupancy grid self.occupancy[x][y][z] is empty set for free item
+        self.occupancy: list[list[list[set]]] = [
+            [
+                [
+                    set() for _ in range(self.grid_size_z)
+                ]
+                for _ in range(self.grid_size_y)
+            ]
+            for _ in range(self.grid_size_x)
+        ]
         
         # we add the coordinates of the gates as identifiers in grid
         for (x, y, z) in self.gate_coords:
@@ -200,17 +205,27 @@ class Chip:
         return False
 
     
-    def grid_has_wire_collision(self) -> bool:
+    def get_grid_wire_collision(self, boolean_output=True) -> int|bool:
         """Checks if a grid has a collision between any wires"""
-        for i, wire1 in enumerate(self.wires):
-            for j, wire2 in enumerate(self.wires):
+        collision_counter = 0
+
+        for i in range(len(self.wires)):
+            for j in range(i):
+                wire1 = self.wires[i]
+                wire2 = self.wires[j]
                 if i == j:
                     continue
 
                 if self.wires_in_collision(wire1, wire2):
-                    return True
-                
-        return False
+                    if boolean_output:
+                        return True
+                        
+                    collision_counter += 1
+        
+        if boolean_output:
+            return False
+        
+        return collision_counter
                 
 
     def calc_total_grid_cost(self) -> int:
@@ -224,6 +239,7 @@ class Chip:
         """Show (and save) a 3D interactive plot of a given grid configuration"""
         total_cost = self.calc_total_grid_cost()
         intersect_amount = self.get_wire_intersect_amount()
+        collision_amount = self.get_grid_wire_collision(boolean_output=False)
         camera_eye = dict(x=-1.3, y=-1.3, z=0.6)
 
         gates_x, gates_y, gates_z = zip(*self.gates.values())
@@ -256,7 +272,7 @@ class Chip:
                     up=dict(x=0, y=0, z=1),  # Up the camera view
                 ),
             ),
-            title=f"Chip {self.chip_id}, Net {self.net_id} (Cost = {total_cost}, Intersect Amount = {intersect_amount})"
+            title=f"Chip {self.chip_id}, Net {self.net_id} (Cost = {total_cost}, Intersect Amount = {intersect_amount}, Collision Amount = {collision_amount})"
         )
 
         config = {

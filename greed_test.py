@@ -1,10 +1,20 @@
 # main.py (or any script you prefer)
 from src.classes.chip import Chip
 from src.algorithms.greed import Greed as gr
+from sys import argv
+
+chip_id = 0
+net_id = 1
+
+if len(argv) >= 2:
+    chip_id = argv[1]
+
+if len(argv) == 3:
+    net_id = argv[2]
 
 # 1) we initialize the chip
 base_data_path = r"data/"
-chip0 = Chip(base_data_path, chip_id=1, net_id=4, output_folder="output")
+chip0 = Chip(base_data_path, chip_id=chip_id, net_id= net_id, output_folder="output")
 
 # 2) we use the algo with offset
 greedy = gr(chip0, 10, True, True)

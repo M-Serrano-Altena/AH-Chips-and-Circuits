@@ -20,9 +20,9 @@ if len(argv) == 3:
     net_id = argv[2]
 
 chip = Chip(base_data_path, chip_id=chip_id, net_id=net_id, output_folder=OUTPUT_FOLDER)
-algorithm = A_star(chip, allow_intersections=True, max_cost=500)
+algorithm = A_star(chip, allow_intersections=True, max_cost=500, best_n_nodes=10000)
 
-all_wire_segments = algorithm.solve_multiple_netlist_orders()
+all_wire_segments = algorithm.solve_all_netlist_orders()
 
 intersection_wires = [
     [(1, 5, 0), (2, 5, 0), (3, 5, 0), (4, 5, 0), (5, 5, 0), (6, 5, 0)],
