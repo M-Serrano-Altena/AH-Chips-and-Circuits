@@ -25,8 +25,9 @@ class Random_random(Greed_random):
             start = wire.gates[0]  # gate1
             end = wire.gates[1]    # gate2
 
-            # we identify the wire:
-            wire_id = f"{start}_{end}"
+            # we add the wire to the occupy grid on position of gates:
+            Greed.add_wire_to_occupy(self.chip, wire, start)
+            Greed.add_wire_to_occupy(self.chip, wire, end)
 
             wire.coords = [start, end] # reset the coords to just the gates
 
@@ -51,7 +52,7 @@ class Random_random(Greed_random):
                     for coord in path:
                         (x, y, z) = coord
                         # we use the coordinates of the gates as identifier in the 3D occupancy matrix
-                        self.chip.occupancy[x][y][z].add(wire_id)
+                        self.chip.occupancy[x][y][z].add(wire)
                         wire.append_wire_segment(coord)
                     break
 

@@ -49,8 +49,9 @@ class Greed:
                 start = wire.gates[0]  # gate1
                 end = wire.gates[1]    # gate2
 
-                # we identify the wire and add to occupy grid:
-                wire_id = f"{start}_{end}"
+                # we add the wire to the occupy grid on position of gates:
+                self.add_wire_to_occupy(self.chip, wire, start)
+                self.add_wire_to_occupy(self.chip, wire, end)
 
                 # we overwrite the coords to be safe, since we are trying a new set:
                 wire.coords = [start, end]
@@ -71,7 +72,7 @@ class Greed:
                     # we have found a viable path and insert the coords in the wire and set occupancy
                     for coord in path:
                         (x, y, z) = coord
-                        self.chip.occupancy[x][y][z].add(wire_id)
+                        self.chip.occupancy[x][y][z].add(wire)
                         wire.append_wire_segment(coord)
             
         # if we have not found a route for a wire with this max offset, we allow short_circuit
@@ -82,16 +83,13 @@ class Greed:
                     start = wire.gates[0]  # gate1
                     end = wire.gates[1]    # gate2
 
-                    # we identify the wire:
-                    wire_id = f"{start}_{end}"
-
                     force_path = self.bfs_route(self.chip, start, end, offset=1000, allow_short_circuit=True)
                     # we add the path coords to the wire
                     if force_path is not None:
                         print(f"Found route while allowing short circuit")
                         for coord in force_path:
                             (x, y, z) = coord
-                            self.chip.occupancy[x][y][z].add(wire_id)
+                            self.chip.occupancy[x][y][z].add(wire)
                             wire.append_wire_segment(coord)
 
         if self.chip.not_fully_connected:
@@ -130,6 +128,7 @@ class Greed:
                 continue
 
             for neighbour in self.get_neighbours(chip, current):
+                # pruning for shortest option
                 if neighbour not in visited:
 
                     (nx, ny, nz) = neighbour
@@ -154,6 +153,11 @@ class Greed:
         return None
     
     @staticmethod
+    def add_wire_to_occupy(chip: Chip, wire: Wire, position: Coords_3D) -> None:
+        (x, y, z) = position
+        chip.occupancy[x][y][z].add(wire)
+    
+    @staticmethod
     def wire_collision(chip: Chip, neighbour: Coords_3D, current: Coords_3D) -> bool:
         """Checks if wiresegment causes a collision in chip"""
 
@@ -167,24 +171,26 @@ class Greed:
         if not neighbour_occupancy or not current_occupancy:
             return False
         
-        # we check for the cases where there is a gate next to a wire (this will always cause wire collision)
-        if "GATE" in neighbour_occupancy and current_occupancy:
-            return True
-        
-        if "GATE" in current_occupancy and neighbour_occupancy:
-            return True
-        
-        # we remove gate from the set to check if wire_ids match
+        # we remove gate from the set to check if wires match
         occupant_n_no_gate = neighbour_occupancy - {"GATE"}
         occupant_c_no_gate = current_occupancy - {"GATE"}
 
-        # if match in wire_id without gates, we have wirecollison 
         shared_wire = occupant_n_no_gate & occupant_c_no_gate
+         
+        # if match in wires, we have wirecollison if the coordinates in the wire class are subsequent
 
         if shared_wire:
-            return True
+            for wire_piece in shared_wire:
+                for i in range(len(wire_piece.coords) - 1):
+                    if wire_piece.coords[i] == current and wire_piece.coords[i + 1] == neighbour:
+                        return True
+                    if wire_piece.coords[i] == neighbour and wire_piece.coords[i + 1] == current:
+                        return True
+            return False
+
 
         return False
+    
         
     @staticmethod    
     def get_neighbours(chip: 'Chip', coord: Coords_3D) -> list[Coords_3D]:
