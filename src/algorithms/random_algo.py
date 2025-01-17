@@ -47,7 +47,7 @@ class Random_random(Greed_random):
                 )
 
                 if path is not None:
-                    print(f"[Random] Found path with random_length ={random_length} for wire={wire.gates}")
+                    print(f"[Random] Found path with random_length = {random_length} for wire = {wire.gates}")
                     # append the path coords to the wire
                     for coord in path:
                         (x, y, z) = coord
@@ -56,7 +56,7 @@ class Random_random(Greed_random):
                         wire.append_wire_segment(coord)
                     break
 
-            # we let this loop untill all wires have been tried for random offsets
+            # we let this loop until all wires have been tried for random offsets
 
         # if not all wires were connected with random offsets
         # fallback to the greed approach to find solution
@@ -79,6 +79,7 @@ def bfs_route_exact_length(chip: Chip, start: Coords_3D, end: Coords_3D, exact_l
     while queue:
         (current, path) = queue.popleft()
         dist = len(path)
+        path_set = set(path)
 
         # check for success
         if current == end and dist == exact_length:
@@ -92,7 +93,7 @@ def bfs_route_exact_length(chip: Chip, start: Coords_3D, end: Coords_3D, exact_l
         for neighbour in Greed.get_neighbours(chip, current):
 
             # if the coordinate is already in its own path we continue
-            if neighbour in path:
+            if neighbour in path_set:
                 continue
 
             (nx, ny, nz) = neighbour 

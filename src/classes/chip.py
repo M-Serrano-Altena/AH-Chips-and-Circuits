@@ -59,7 +59,7 @@ class Chip:
         self.grid_shape = (self.grid_size_x, self.grid_size_y, self.grid_size_z)
 
         # initate occupancy grid self.occupancy[x][y][z] is None for free item
-        self.occupancy = [[[set() for _ in range(self.grid_size_z)] 
+        self.occupancy: list[list[list[set]]] = [[[set() for _ in range(self.grid_size_z)] 
                            for _ in range(self.grid_size_y)]
                            for _ in range(self.grid_size_x)
                            ]

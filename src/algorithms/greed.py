@@ -143,7 +143,7 @@ class Greed:
                         continue
 
                     # if occupied by wire, and we do not allow short circuit, we continue
-                    if not allow_short_circuit and occupant and "GATE" not in occupant:
+                    if not allow_short_circuit and len(occupant) > 0 and "GATE" not in occupant:
                         continue
 
                     visited.add(neighbour)
@@ -162,7 +162,7 @@ class Greed:
         """Checks if wiresegment causes a collision in chip"""
 
         (nx, ny, nz) = neighbour
-        neighbour_occupancy = chip.occupancy[nx][ny][nz] 
+        neighbour_occupancy = chip.occupancy[nx][ny][nz]
 
         (cx, cy, cz) = current
         current_occupancy = chip.occupancy[cx][cy][cz] 
@@ -266,6 +266,14 @@ class Greed_random(Greed):
     if shortest possible not possible check for less short for each cable at random iteratively (offset + 2, 4, 6 untill k)
     if still no solution found, and allow_short_circuit = True, we connect ignoring short circuit
     """
+
+    def __init__(self, chip: "Chip", max_offset: int = 6, allow_short_circuit: bool = False, sort_wires: bool = False, random_seed: int|None=None):
+        # Use Greed class init
+        super().__init__(chip, max_offset, allow_short_circuit, sort_wires)
+        
+        # add a random seed if given
+        if random_seed is not None:
+            random.seed(random_seed)
 
     def get_wire_order(self, wires):
 
