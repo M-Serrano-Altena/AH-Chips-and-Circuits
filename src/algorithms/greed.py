@@ -98,7 +98,7 @@ class Greed:
             print("Warning: Not all wires were able to be connected")
         else:
             print("All wires are connected")
-            print(f"Status of wire collision: {self.chip.grid_has_wire_collision()}")
+            print(f"Status of wire collision: {self.chip.get_grid_wire_collision()}")
 
     def bfs_route(self, 
         chip: 'Chip', start: Coords_3D, end: Coords_3D, 
@@ -208,7 +208,7 @@ class Greed:
         return neighbours
     
     @staticmethod
-    def gate_occupied(chip: 'Chip', coord: Coords_3D, own_gates: set[Coords_3D] = None) -> bool:
+    def gate_occupied(chip: 'Chip', coord: Coords_3D, own_gates: set[Coords_3D]|None = None) -> bool:
         """
         Checks if 'coord' is occupied by any gate, except its own
         """
@@ -225,7 +225,7 @@ class Greed:
         return None
     
     @staticmethod
-    def is_occupied(chip: 'Chip', coord: Coords_3D, own_gates: set[Coords_3D] = None) -> bool:
+    def is_occupied(chip: 'Chip', coord: Coords_3D, own_gates: set[Coords_3D]|None = None) -> bool:
         """ 
         Checks if `coord` is already occupied by any wire
         (Optionally checks if the coord is its own gate, to return false since occupation is from its own wire.) 
@@ -279,13 +279,13 @@ class Greed_random(Greed):
 
         random_limit = 1000
 
-        # we calculate how many steps we need to make in each ditrection
+        # we calculate how many steps we need to make in each direction
         dx = end[0] - start[0]
         dy = end[1] - start[1]
         dz = end[2] - start[2]
 
         # now we create a list of moves needed to be made:
-
+        
         moves = []
 
         for _ in range(abs(dx)):
