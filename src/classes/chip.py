@@ -36,6 +36,7 @@ class Chip:
         self.chip_id = chip_id
         self.net_id = net_id
         self.output_folder = output_folder
+        self.padding = padding
 
         chip_path = os.path.join(base_data_path, f"chip_{self.chip_id}")
         filepath_print = os.path.join(chip_path, f"print_{self.chip_id}.csv")
@@ -53,20 +54,20 @@ class Chip:
         self.gate_coords = set(self.gates.values())
 
         # grid size
-        self.grid_size_x = max(coords[0] for coords in self.gates.values()) + 1 + padding
-        self.grid_size_y = max(coords[1] for coords in self.gates.values()) + 1 + padding
-        self.grid_size_z = 8
-        self.grid_shape = (self.grid_size_x, self.grid_size_y, self.grid_size_z)
+        self.grid_range_x = (-padding + 1, max(coords[0] for coords in self.gates.values()) + padding)
+        self.grid_range_y = (-padding + 1, max(coords[1] for coords in self.gates.values()) + padding)
+        self.grid_range_z = (0, 7)
+        self.grid_shape = (self.grid_range_x[1] - self.grid_range_x[0], self.grid_range_y[1] - self.grid_range_y[0], self.grid_range_z[1] - self.grid_range_z[0])
 
         # initate occupancy grid self.occupancy[x][y][z] is empty set for free item
         self.occupancy: list[list[list[set]]] = [
             [
                 [
-                    set() for _ in range(self.grid_size_z)
+                    set() for _ in range(self.grid_shape[2] + 1)
                 ]
-                for _ in range(self.grid_size_y)
+                for _ in range(self.grid_shape[1] + 1)
             ]
-            for _ in range(self.grid_size_x)
+            for _ in range(self.grid_shape[0] + 1)
         ]
         
         # we add the coordinates of the gates as identifiers in grid
@@ -122,6 +123,8 @@ class Chip:
 
         for i, existing_wire in enumerate(self.wires):
             if {existing_wire.coords[0], existing_wire.coords[-1]} == {gate_1_coords, gate_2_coords}:
+                print("old:", existing_wire)
+                print("new:", wire)
                 self.wires[i] = wire
                 return
 
@@ -135,14 +138,58 @@ class Chip:
         for wire_segment_list in list_all_wire_segments:
             self.add_entire_wire(wire_segment_list)
 
-    @property
-    def not_fully_connected(self):
+    def is_fully_connected(self) -> bool:
         for wire in self.wires:
-            if wire.is_wire_connected():
-                continue
-            else: 
-                return True
-        return False
+            if not wire.is_wire_connected():
+                return False
+
+        return True
+    
+    def coord_within_boundaries(self, coord: Coords_3D) -> bool:
+        return (self.grid_range_x[0] <= coord[0] <= self.grid_range_x[1] 
+                and self.grid_range_y[0] <= coord[1] <= self.grid_range_y[1] 
+                and self.grid_range_z[0] <= coord[2] <= self.grid_range_z[1])
+
+    def get_neighbours(self, coord: Coords_3D) -> list[Coords_3D]:
+        """
+        Return valid neighboring coordinates in 3D (±x, ±y, ±z), 
+        ensuring we stay within the grid boundaries.
+        """
+        coords_dim = len(coord)
+        all_offset_combos = [(1, 0, 0), (-1, 0, 0), (0, 1, 0), (0, -1, 0), (0, 0, 1), (0, 0, -1)]
+        all_neighbour_coords = [
+            tuple(coord[i] + offset_coords[i] for i in range(coords_dim))
+            for offset_coords in all_offset_combos
+        ]
+
+        neighbours = [coord for coord in all_neighbour_coords if self.coord_within_boundaries(coord)]
+        return neighbours
+    
+
+    def coord_occupied_by_gate(self, coord: Coords_3D, own_gates: set[Coords_3D]|None = None) -> bool:
+        """
+        Checks if 'coord' is occupied by any gate, except its own
+        """
+        # if coord is own_gate return false
+        if own_gates and (coord in own_gates): 
+            return False
+        
+        # if gate is in general gate coords, return true else false
+        return coord in self.gate_coords
+    
+    def coord_is_occupied(self, coord: Coords_3D, own_gates: set[Coords_3D]|None = None) -> bool:
+        """ 
+        Checks if `coord` is already occupied by any wire or gate (except its own)
+        """
+
+        # return False if the coordinate is one of its own gates
+        if own_gates and (coord in own_gates):
+            return False
+        
+        x, y, z = coord
+
+        # return true if there coordinate is occupied
+        return len(self.occupancy[x][y][z]) != 0 
 
 
     def get_intersection_coords(self) -> set[Coords_3D]:
@@ -203,6 +250,37 @@ class Chip:
                     return True
                 
         return False
+    
+    def wire_segment_causes_collision(self, neighbour: Coords_3D, current: Coords_3D) -> bool:
+        """Checks if wiresegment causes a collision in chip"""
+
+        (nx, ny, nz) = neighbour
+        neighbour_occupancy = self.occupancy[nx][ny][nz]
+
+        (cx, cy, cz) = current
+        current_occupancy = self.occupancy[cx][cy][cz] 
+
+        # if one of both is empty, we can never have wire collision
+        if not neighbour_occupancy or not current_occupancy:
+            return False
+        
+        # we remove gate from the set to check if wires match
+        occupant_n_no_gate = neighbour_occupancy - {"GATE"}
+        occupant_c_no_gate = current_occupancy - {"GATE"}
+
+        shared_wire = occupant_n_no_gate & occupant_c_no_gate
+         
+        # if match in wires, we have wirecollison if the coordinates in the wire class are subsequent
+
+        if shared_wire:
+            for wire_piece in shared_wire:
+                for i in range(len(wire_piece.coords) - 1):
+                    if wire_piece.coords[i] == current and wire_piece.coords[i + 1] == neighbour:
+                        return True
+                    if wire_piece.coords[i] == neighbour and wire_piece.coords[i + 1] == current:
+                        return True
+
+        return False
 
     
     def get_grid_wire_collision(self, boolean_output=True) -> int|bool:
@@ -226,13 +304,22 @@ class Chip:
             return False
         
         return collision_counter
+    
+    def add_wire_to_occupy(self, wire: Wire, position: Coords_3D) -> None:
+        # negative coordinates won't get index properly, so extra shift
+        position_shift = tuple(len(position) * (self.padding - 1,))
+        position = tuple(position[i] + position_shift[i] for i in range(len(position)))
+        (x, y, z) = position
+
+        self.occupancy[x][y][z].add(wire)
                 
 
     def calc_total_grid_cost(self) -> int:
         """Calculate the total wire cost of a given grid configuration"""
         tot_wire_length = sum(wire.length for wire in self.wires)
         intersection_amount = self.get_wire_intersect_amount()
-        return cost_function(wire_length=tot_wire_length, intersect_amount=intersection_amount)
+        collision_amount = self.get_grid_wire_collision()
+        return cost_function(wire_length=tot_wire_length, intersect_amount=intersection_amount, collision_amount=collision_amount)
 
 
     def show_grid(self, image_filename: str|None = None) -> None:
@@ -262,9 +349,9 @@ class Chip:
 
         fig.update_layout(
             scene=dict(
-            xaxis = dict(title='X Axis', range=[-0.5, self.grid_size_x - 1]),
-            yaxis = dict(title='Y Axis', range=[-0.5, self.grid_size_y - 1]),
-            zaxis = dict(title='Z Axis', range=[-0.5, self.grid_size_z - 1]),
+            xaxis = dict(title='X Axis', range=[self.grid_range_x[0], self.grid_range_x[1]]),
+            yaxis = dict(title='Y Axis', range=[self.grid_range_y[0], self.grid_range_y[1]]),
+            zaxis = dict(title='Z Axis', range=[-0.5 + self.grid_range_z[0], self.grid_range_z[1]]),
                 aspectmode='cube',
                 camera=dict(
                     eye=camera_eye,  # Adjust the camera position
@@ -272,7 +359,7 @@ class Chip:
                     up=dict(x=0, y=0, z=1),  # Up the camera view
                 ),
             ),
-            title=f"Chip {self.chip_id}, Net {self.net_id} (Cost = {total_cost}, Intersect Amount = {intersect_amount}, Collision Amount = {collision_amount})"
+            title=f"Chip {self.chip_id}, Net {self.net_id} (Cost = {total_cost}, Intersect Amount = {intersect_amount}, Collision Amount = {collision_amount}, Fully Connected: {self.is_fully_connected()})"
         )
 
         config = {

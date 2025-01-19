@@ -7,6 +7,9 @@ class Wire():
 
     def __len__(self):
         return self.length
+    
+    def __repr__(self):
+        return f"Wire({self.coords})"
 
     @property
     def length(self):

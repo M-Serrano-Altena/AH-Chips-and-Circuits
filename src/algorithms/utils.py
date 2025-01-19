@@ -14,10 +14,10 @@ class Node:
         return f"Node(coords = {self.state}, cost = {self.cost})"
 
 
-def cost_function(wire_length: int, intersect_amount: int) -> int:
+def cost_function(wire_length: int, intersect_amount: int, collision_amount: int=0) -> int:
     """Calculates the cost of creating the chip"""
-    return wire_length + INTERSECTION_COST * intersect_amount
+    return wire_length + INTERSECTION_COST * intersect_amount + COLLISION_COST * collision_amount
 
 def manhattan_distance(coord1: Coords_3D, coord2: Coords_3D):
-    """Returns the manhattan distance between two points"""
+    """Calculates the Manhattan distance between two coordinates"""
     return sum(abs(coord1[i] - coord2[i]) for i in range(len(coord1)))

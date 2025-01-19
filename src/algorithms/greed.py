@@ -3,6 +3,7 @@ from src.classes.wire import *
 from src.algorithms.utils import *
 from collections import deque
 import random
+from numpy import sign
 
 class Greed:
     """
@@ -24,7 +25,7 @@ class Greed:
         """
         if self.sort_wires:
             wires.sort(
-                key=lambda w: manhattan_distance(w.coords[0], w.coords[1]),
+                key=lambda w: manhattan_distance(w.coords[0], w.coords[-1]),
                 reverse=False)
         return wires
 
@@ -50,8 +51,8 @@ class Greed:
                 end = wire.gates[1]    # gate2
 
                 # we add the wire to the occupy grid on position of gates:
-                self.add_wire_to_occupy(self.chip, wire, start)
-                self.add_wire_to_occupy(self.chip, wire, end)
+                self.chip.add_wire_to_occupy(wire, start)
+                self.chip.add_wire_to_occupy(wire, end)
 
                 # we overwrite the coords to be safe, since we are trying a new set:
                 wire.coords = [start, end]
@@ -71,8 +72,7 @@ class Greed:
                     print(f"Found shortest route with offset = {offset} and for wire = {wire.gates}")
                     # we have found a viable path and insert the coords in the wire and set occupancy
                     for coord in path:
-                        (x, y, z) = coord
-                        self.chip.occupancy[x][y][z].add(wire)
+                        self.chip.add_wire_to_occupy(wire, coord)
                         wire.append_wire_segment(coord)
             
         # if we have not found a route for a wire with this max offset, we allow short_circuit
@@ -88,11 +88,10 @@ class Greed:
                     if force_path is not None:
                         print(f"Found route while allowing short circuit")
                         for coord in force_path:
-                            (x, y, z) = coord
-                            self.chip.occupancy[x][y][z].add(wire)
+                            self.chip.add_wire_to_occupy(wire, coord)
                             wire.append_wire_segment(coord)
 
-        if self.chip.not_fully_connected:
+        if not self.chip.is_fully_connected():
             print("Warning: Not all wires were able to be connected")
         else:
             print("All wires are connected")
@@ -127,7 +126,7 @@ class Greed:
             if len(path) > limit:
                 continue
 
-            for neighbour in self.get_neighbours(chip, current):
+            for neighbour in self.chip.get_neighbours(current):
                 # pruning for shortest option
                 if neighbour not in visited:
 
@@ -135,7 +134,7 @@ class Greed:
                     occupant = chip.occupancy[nx][ny][nz]
 
                     # if wiresegment cause wire_collision we continue 
-                    if self.wire_collision(chip, neighbour, current):
+                    if self.chip.wire_segment_causes_collision(neighbour, current):
                         continue
 
                     # if occupied by a gate which is not its end gate we continue
@@ -151,107 +150,6 @@ class Greed:
                     queue.append((neighbour, path + [neighbour]))
 
         return None
-    
-    @staticmethod
-    def add_wire_to_occupy(chip: Chip, wire: Wire, position: Coords_3D) -> None:
-        (x, y, z) = position
-        chip.occupancy[x][y][z].add(wire)
-    
-    @staticmethod
-    def wire_collision(chip: Chip, neighbour: Coords_3D, current: Coords_3D) -> bool:
-        """Checks if wiresegment causes a collision in chip"""
-
-        (nx, ny, nz) = neighbour
-        neighbour_occupancy = chip.occupancy[nx][ny][nz]
-
-        (cx, cy, cz) = current
-        current_occupancy = chip.occupancy[cx][cy][cz] 
-
-        # if one of both is empty, we can never have wire collision
-        if not neighbour_occupancy or not current_occupancy:
-            return False
-        
-        # we remove gate from the set to check if wires match
-        occupant_n_no_gate = neighbour_occupancy - {"GATE"}
-        occupant_c_no_gate = current_occupancy - {"GATE"}
-
-        shared_wire = occupant_n_no_gate & occupant_c_no_gate
-         
-        # if match in wires, we have wirecollison if the coordinates in the wire class are subsequent
-
-        if shared_wire:
-            for wire_piece in shared_wire:
-                for i in range(len(wire_piece.coords) - 1):
-                    if wire_piece.coords[i] == current and wire_piece.coords[i + 1] == neighbour:
-                        return True
-                    if wire_piece.coords[i] == neighbour and wire_piece.coords[i + 1] == current:
-                        return True
-            return False
-
-
-        return False
-    
-        
-    @staticmethod    
-    def get_neighbours(chip: 'Chip', coord: Coords_3D) -> list[Coords_3D]:
-        """
-        Return valid neighboring coordinates in 3D (±x, ±y, ±z), 
-        ensuring we stay within the grid boundaries.
-        """
-        (x, y, z) = coord
-
-        possible_moves = [(1, 0, 0), (-1, 0, 0), (0, 1, 0), (0, -1, 0), (0, 0, 1), (0, 0, -1)]
-        neighbours = []
-        
-        for (dx, dy, dz) in possible_moves:
-
-            (nx, ny, nz) = (x + dx, y + dy, z + dz)
-
-            # we check if options are within boundries of chip, if so we add to neighbours
-            if (0 <= nx < chip.grid_size_x 
-                and 0 <= ny < chip.grid_size_y 
-                and 0 <= nz < chip.grid_size_z):
-
-                neighbours.append((nx, ny, nz))
-
-        return neighbours
-    
-    @staticmethod
-    def gate_occupied(chip: 'Chip', coord: Coords_3D, own_gates: set[Coords_3D]|None = None) -> bool:
-        """
-        Checks if 'coord' is occupied by any gate, except its own
-        """
-
-        # if coord is own_gate return false
-        if own_gates and (coord in own_gates): 
-            return False
-        
-        # if gate is in general gate coords, return true
-        gate_coords = set(chip.gates.values())
-        if coord in gate_coords:
-            return True
-        
-        return None
-    
-    @staticmethod
-    def is_occupied(chip: 'Chip', coord: Coords_3D, own_gates: set[Coords_3D]|None = None) -> bool:
-        """ 
-        Checks if `coord` is already occupied by any wire
-        (Optionally checks if the coord is its own gate, to return false since occupation is from its own wire.) 
-        """
-
-        # check if gate is occupied, or own gate or none
-        gate_occupied = Greed.gate_occupied(chip, coord, own_gates)
-
-        if gate_occupied is not None:
-            return gate_occupied
-
-        # else we check other occupation by occupation matrix
-
-        (x, y, z) = coord
-
-        # return true if there is entry in occupancy set for coordinates
-        return len(chip.occupancy[x][y][z]) != 0 
     
     def shortest_cable(self, 
         chip: 'Chip', start: Coords_3D, end: Coords_3D, 
@@ -286,29 +184,24 @@ class Greed_random(Greed):
         offset: int=0, allow_short_circuit: bool=False) -> list[Coords_3D]|None:
         """Adds a shortest possible wire route to the wire variable (chosen at random)"""
 
-        random_limit = 1000
+        limit = 1000
 
-        # we calculate how many steps we need to make in each direction
-        dx = end[0] - start[0]
-        dy = end[1] - start[1]
-        dz = end[2] - start[2]
+        # we calculate how many steps we need to make in each direction as a vector
+        dr = tuple(end[i] - start[i] for i in range(len(end)))
 
-        # now we create a list of moves needed to be made:
-        
         moves = []
 
-        for _ in range(abs(dx)):
-            moves.append(((1, 0, 0) if dx > 0 else (-1, 0, 0)))
-        for _ in range(abs(dy)):
-            moves.append((0, 1, 0) if dy > 0 else (0, -1, 0))
-        for _ in range(abs(dz)):
-            moves.append(((0, 0, 1) if dz > 0 else (0, 0, -1)))
+        # add all moves needed to take to go to the opposite gate
+        # each move is 1 or -1 in only one direction (e.g. (1,0,0) means 1 move right)
+        for i, dr_component in enumerate(dr):
+            moves.extend(abs(dr_component) * [tuple(sign(dr_component) * 1 * int(i == j) for j in range(len(dr)))])
+
 
         # we have all our moves we need to make for the shortest route, now we shuffle the order to randomize route 
 
         counter = 0
 
-        while counter < random_limit:
+        while counter < limit:
 
             # each try we shuffle the minimized route to find a random path that avoids collision and short circuit
             counter += 1
@@ -322,12 +215,12 @@ class Greed_random(Greed):
                 current_coord = tuple(current_coord[i] + move[i] for i in range(len(current_coord)))
 
                 # continue if collision is found
-                if self.wire_collision(chip, previous_coord, current_coord):
+                if self.chip.wire_segment_causes_collision(previous_coord, current_coord):
                     continue
                 
                 # if short circuit is not allowed, we continue if we short circuit
                 if not allow_short_circuit:
-                    if self.is_occupied(chip, current_coord, [start,end]):
+                    if self.chip.coord_is_occupied(current_coord, [start, end]):
                         continue
                 
                 path.append(current_coord)
@@ -337,6 +230,3 @@ class Greed_random(Greed):
                 return path[:-1]
         
         return None
-    
-
-
