@@ -20,7 +20,7 @@ if len(argv) >= 2:
 if len(argv) == 3:
     net_id = argv[2]
 
-chip = Chip(base_data_path, chip_id=chip_id, net_id=net_id, output_folder=OUTPUT_FOLDER, padding=2)
+chip = Chip(base_data_path, chip_id=chip_id, net_id=net_id, output_folder=OUTPUT_FOLDER, padding=3)
 algorithm = A_star(chip, allow_intersections=True, best_n_nodes=1000)
 
 # all_wire_segments = algorithm.solve()

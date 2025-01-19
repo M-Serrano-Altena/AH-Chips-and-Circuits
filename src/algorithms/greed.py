@@ -25,7 +25,7 @@ class Greed:
         """
         if self.sort_wires:
             wires.sort(
-                key=lambda w: manhattan_distance(w.coords[0], w.coords[-1]),
+                key=lambda w: manhattan_distance(w.coords_wire_segments[0], w.coords_wire_segments[-1]),
                 reverse=False)
         return wires
 
@@ -51,11 +51,11 @@ class Greed:
                 end = wire.gates[1]    # gate2
 
                 # we add the wire to the occupy grid on position of gates:
-                self.chip.add_wire_to_occupy(wire, start)
-                self.chip.add_wire_to_occupy(wire, end)
+                self.chip.add_wire_segment_to_occupancy(coord=start, wire=wire)
+                self.chip.add_wire_segment_to_occupancy(coord=end, wire=wire)
 
                 # we overwrite the coords to be safe, since we are trying a new set:
-                wire.coords = [start, end]
+                wire.coords_wire_segments = [start, end]
 
                 # we attempt to find the route breath first 
                 path = self.bfs_route(self.chip, start, end, offset = offset, allow_short_circuit=False)
@@ -72,7 +72,7 @@ class Greed:
                     print(f"Found shortest route with offset = {offset} and for wire = {wire.gates}")
                     # we have found a viable path and insert the coords in the wire and set occupancy
                     for coord in path:
-                        self.chip.add_wire_to_occupy(wire, coord)
+                        self.chip.add_wire_segment_to_occupancy(coord=coord, wire=wire)
                         wire.append_wire_segment(coord)
             
         # if we have not found a route for a wire with this max offset, we allow short_circuit
@@ -88,7 +88,7 @@ class Greed:
                     if force_path is not None:
                         print(f"Found route while allowing short circuit")
                         for coord in force_path:
-                            self.chip.add_wire_to_occupy(wire, coord)
+                            self.chip.add_wire_segment_to_occupancy(coord=coord, wire=wire)
                             wire.append_wire_segment(coord)
 
         if not self.chip.is_fully_connected():
@@ -129,23 +129,22 @@ class Greed:
             for neighbour in self.chip.get_neighbours(current):
                 # pruning for shortest option
                 if neighbour not in visited:
+                    occupant_set = chip.get_coord_occupancy(neighbour)
 
-                    (nx, ny, nz) = neighbour
-                    occupant = chip.occupancy[nx][ny][nz]
-
-                    # if wiresegment cause wire_collision we continue 
+                    # skip collisions
                     if self.chip.wire_segment_causes_collision(neighbour, current):
                         continue
 
                     # if occupied by a gate which is not its end gate we continue
-                    if "GATE" in occupant and neighbour != end:
+                    if "GATE" in occupant_set and neighbour != end:
                         continue
 
                     # if occupied by wire, and we do not allow short circuit, we continue
-                    if not allow_short_circuit and len(occupant) > 0 and "GATE" not in occupant:
+                    if not allow_short_circuit and len(occupant_set) > 0 and "GATE" not in occupant_set:
                         continue
 
                     visited.add(neighbour)
+                    
                     # we add the current node and path to the queue
                     queue.append((neighbour, path + [neighbour]))
 
@@ -194,13 +193,11 @@ class Greed_random(Greed):
         # add all moves needed to take to go to the opposite gate
         # each move is 1 or -1 in only one direction (e.g. (1,0,0) means 1 move right)
         for i, dr_component in enumerate(dr):
-            moves.extend(abs(dr_component) * [tuple(sign(dr_component) * 1 * int(i == j) for j in range(len(dr)))])
+            moves.extend(abs(dr_component) * [tuple(sign(dr_component) * int(i == j) for j in range(len(dr)))])
 
 
         # we have all our moves we need to make for the shortest route, now we shuffle the order to randomize route 
-
         counter = 0
-
         while counter < limit:
 
             # each try we shuffle the minimized route to find a random path that avoids collision and short circuit

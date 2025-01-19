@@ -26,10 +26,10 @@ class Random_random(Greed_random):
             end = wire.gates[1]    # gate2
 
             # we add the wire to the occupy grid on position of gates:
-            self.chip.add_wire_to_occupy(wire, start)
-            self.chip.add_wire_to_occupy(wire, end)
+            self.chip.add_wire_segment_to_occupancy(coord=start, wire=wire)
+            self.chip.add_wire_segment_to_occupancy(coord=end, wire=wire)
 
-            wire.coords = [start, end] # reset the coords to just the gates
+            wire.coords_wire_segments = [start, end] # reset the coords to just the gates
 
             min_length = manhattan_distance(start, end)
             max_length = self.max_offset + min_length
@@ -50,7 +50,7 @@ class Random_random(Greed_random):
                     print(f"[Random] Found path with random_length = {random_length} for wire = {wire.gates}")
                     # append the path coords to the wire
                     for coord in path:
-                        self.chip.add_wire_to_occupy(wire, coord)
+                        self.chip.add_wire_segment_to_occupancy(coord=coord, wire=wire)
                         wire.append_wire_segment(coord)
                     break
 
@@ -91,10 +91,10 @@ class Random_random(Greed_random):
                 if neighbour in path_set:
                     continue
 
-                (nx, ny, nz) = neighbour
+                occupant_set = chip.get_coord_occupancy(neighbour)
 
                 # we continue if grid is occupied by another gate (occupancy grid only contains gate coords) which is not its own
-                if "GATE" in chip.occupancy[nx][ny][nz] and neighbour != end:
+                if "GATE" in occupant_set and neighbour != end:
                     continue
 
                 # if wire segment causes a collision we continue 
