@@ -95,13 +95,6 @@ class Chip:
             wire_in_system = Wire(gate_1_coords, gate_2_coords)
             self.wires.append(wire_in_system)
 
-
-    def add_wire(self, wire_segment_list: list[Coords_3D]) -> None:
-        """Create a wire from a wire segment list"""
-        wire = Wire(wire_segment_list[0], wire_segment_list[-1])
-        wire.append_wire_segment_list(wire_segment_list)
-        self.wires.append(wire)
-
     def add_entire_wire(self, wire_segment_list: list[Coords_3D]) -> None:
         """Create an entire wire from a wire segment list"""
         gate_1_coords = wire_segment_list[0]
@@ -114,12 +107,8 @@ class Chip:
         for i, existing_wire in enumerate(self.wires):
             if {existing_wire.coords_wire_segments[0], existing_wire.coords_wire_segments[-1]} == {gate_1_coords, gate_2_coords}:
                 self.wires[i] = wire
+                self.add_wire_to_occupancy(wire_segment_list, wire)
                 return
-
-    def add_wires(self, list_all_wire_segments: list[list[Coords_3D]]) -> None:
-        """Create multiple wires from a list of wire segments"""
-        for wire_coord_list in list_all_wire_segments:
-            self.add_wire(wire_coord_list)
 
     def add_entire_wires(self, list_all_wire_segments: list[list[Coords_3D]]) -> None:
         """Create multiple entire wires from a list of wire segments"""
@@ -286,6 +275,9 @@ class Chip:
     
     def add_wire_segment_to_occupancy(self, coord: Coords_3D, wire: Wire) -> None:
         self.occupancy.add_wire_segment(coord, wire)
+
+    def add_wire_to_occupancy(self, wire_segment_list: list[Coords_3D], wire: Wire) -> None:
+        self.occupancy.add_wire(wire_segment_list, wire)
 
     def get_coord_occupancy(self, coords: Coords_3D, exclude_gates: bool=False) -> set[Wire, str]:
         return self.occupancy.get_coord_occupancy(coords, exclude_gates)

@@ -20,11 +20,11 @@ if len(argv) >= 2:
 if len(argv) == 3:
     net_id = argv[2]
 
-chip = Chip(base_data_path, chip_id=chip_id, net_id=net_id, output_folder=OUTPUT_FOLDER, padding=3)
+chip = Chip(base_data_path, chip_id=chip_id, net_id=net_id, output_folder=OUTPUT_FOLDER, padding=1)
 algorithm = A_star(chip, allow_intersections=True, best_n_nodes=1000)
 
-# all_wire_segments = algorithm.solve()
-all_wire_segments = algorithm.solve_n_random_netlist_orders(random_netlist_order_amt=100)
+algorithm.solve()
+algorithm.solve_n_random_netlist_orders(random_netlist_order_amt=100)
 
 intersection_wires = [
     [(1, 5, 0), (2, 5, 0), (3, 5, 0), (4, 5, 0), (5, 5, 0), (6, 5, 0)],
@@ -50,7 +50,7 @@ collision_wires = [
     [(4, 4, 0), (3, 4, 0), (2, 4, 0), (1, 4, 0), (1, 5, 0)]
 ]
 
-chip.add_entire_wires(all_wire_segments)
+chip = algorithm.best_chip
 
 base_save_name = f"chip_{chip_id}_net_{net_id}"
 plot_save_name = "layout_" + base_save_name

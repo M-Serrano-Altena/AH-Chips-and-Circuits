@@ -20,6 +20,10 @@ class Occupancy:
 
     def add_wire_segment(self, coords: Coords_3D, wire: 'Wire') -> None:
         self._add_to_occupancy(coords, wire)
+
+    def add_wire(self, wire_segment_list: list[Coords_3D], wire: 'Wire') -> None:
+        for wire_segment in wire_segment_list:
+            self.add_wire_segment(wire_segment, wire=wire)
     
     def add_gate(self, gate_coords: Coords_3D) -> None:
         self._add_to_occupancy(gate_coords, "GATE")
