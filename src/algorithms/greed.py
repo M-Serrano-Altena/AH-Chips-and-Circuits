@@ -126,7 +126,7 @@ class Greed:
             return
         
         if not self.chip.is_fully_connected():
-            print("Warning: Not all wires were able to be connected")
+            pass
         else:
             print("All wires are connected")
             print(f"Has wire collision: {self.chip.get_grid_wire_collision()}")
@@ -200,7 +200,7 @@ class Greed_random(Greed):
     if still no solution found, and allow_short_circuit = True, we connect ignoring short circuit
     """
 
-    def __init__(self, chip: "Chip", max_offset: int = 6, allow_short_circuit: bool = False, sort_wires: bool = False, random_seed: int|None=None):
+    def __init__(self, chip: "Chip", max_offset: int = 10, allow_short_circuit: bool = False, sort_wires: bool = False, random_seed: int|None=None):
         # Use Greed class init
         super().__init__(chip, max_offset, allow_short_circuit, sort_wires)
         

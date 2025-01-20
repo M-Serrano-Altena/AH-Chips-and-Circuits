@@ -13,6 +13,25 @@ class Occupancy:
 
     def __repr__(self):
         return f"Occupancy({self.occupancy})"
+    
+    def reset(self) -> None:
+        self.occupancy.clear()
+        self._occupancy_without_gates.clear()
+    
+    def remove_from_occupancy(self, coord: Coords_3D, wire: 'Wire') -> None:
+        if coord not in self.occupancy:
+            return
+        
+        # return if occupancy is empty
+        if not self.occupancy[coord]:
+            return
+        
+        # we do not remove cordinates if GATE
+        if "GATE" in self.occupancy[coord]:
+            return
+        
+        
+        self.occupancy[coord].remove(wire)
 
     def add_wire_segment(self, coords: Coords_3D, wire: 'Wire') -> None:
         self.occupancy[coords].add(wire)

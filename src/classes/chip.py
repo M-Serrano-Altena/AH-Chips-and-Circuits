@@ -177,20 +177,22 @@ class Chip:
     def get_intersection_coords(self) -> set[Coords_3D]:
         """Get the coordinates of all wire intersections"""
 
-        wires_coords_set = [set(wire.coords_wire_segments) for wire in self.wires]
-        shared_coords = set()
+        occupancy = self.occupancy.occupancy
+        output = set()
 
-        for i in range(len(wires_coords_set)):
-            for j in range(i):
-                wire_segment_set_1 = wires_coords_set[i]
-                wire_segment_set_2 = wires_coords_set[j]
-                
-                # add all wire segments that are shared between different wires
-                shared_coords |= wire_segment_set_1 & wire_segment_set_2
+        for coordinates in occupancy.keys():
+            occupancy_set = occupancy[coordinates]
+            
+            # we will never have an intersection at a gate
+            if "GATE" in occupancy_set:
+                continue
 
-        # exclude shared coords that correspond to gates
-        shared_coords -= self.gate_coords
-        return shared_coords
+            # if the set is larger than 1, we have multiple wiring in coordinates thus intersection    
+            if len(occupancy_set) > 1:
+                output.add(coordinates)
+        
+        return output
+
 
     def get_wire_intersect_amount(self) -> int:
         """
@@ -198,18 +200,23 @@ class Chip:
         If 3 wires intersect at 1 point, it counts as 2 intersections.
         
         """
-        wires_coords_set = [set(wire.coords_wire_segments) for wire in self.wires]
-        intersection_coords = self.get_intersection_coords()
+        
+        occupancy = self.occupancy.occupancy
         intersection_counter = 0
 
-        # check how many cables are involved in intersection
-        for intersection_coord in intersection_coords:
-            amount_of_intersections = sum(intersection_coord in wire_segment_set for wire_segment_set in wires_coords_set) - 1
-            if amount_of_intersections > 0:
-                intersection_counter += amount_of_intersections
+        for intersection_coords in self.get_intersection_coords():
 
+            occupancy_set = occupancy[intersection_coords]
+
+            # if more than two coordinates in set we have 3 wires intersecting
+            if len(occupancy_set) > 2:
+                intersection_counter += 2
+
+            # otherwise we have 2 wires intersecting
+            else:
+                intersection_counter += 1
+                
         return intersection_counter
-    
     
     @staticmethod
     def wires_in_collision(wire1: Wire, wire2: Wire):

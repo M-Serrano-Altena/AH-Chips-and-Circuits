@@ -42,9 +42,11 @@ class Wire():
         if coords in self.gates:
             return
         
+        # if next to second last coord, add before it
         if self.are_points_neighbours(coords, self.coords_wire_segments[-2]):
             self.coords_wire_segments.insert(-1, coords)
         
+        # if next to second coord, add after it
         elif self.are_points_neighbours(coords, self.coords_wire_segments[1]):
             self.coords_wire_segments.insert(1, coords)
 
