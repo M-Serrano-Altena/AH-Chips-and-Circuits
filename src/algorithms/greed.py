@@ -44,7 +44,6 @@ class Greed:
 
         lowest_cost = inf
         for i in range(iterations):
-            print(i)
             self.chip = copy.deepcopy(self.chip_og)
             netlist = copy.deepcopy(self.chip_og.netlist)
             random.shuffle(netlist)
@@ -54,6 +53,8 @@ class Greed:
             if cost < lowest_cost and self.chip.is_fully_connected():
                 lowest_cost = cost
                 best_chip = self.chip
+
+            print(f"{i}: cost = {cost}, lowest cost = {lowest_cost}")
             
         return best_chip
 

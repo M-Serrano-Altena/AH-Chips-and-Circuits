@@ -71,59 +71,38 @@ class A_star(Greed):
 
         # we start increasing the offset iteratively after having checked each wire
         # note: it is impossible for the offset to be uneven and still have a valid connection, thus we check only for even values
-        for offset in range(0, self.max_offset, 2):
+
+        if self.chip.is_fully_connected():
             if self.print_log_messages:
-                print(f"Checking offset: {offset}")
+                print("All wires are connected")
+                print(f"Has wire collision: {self.chip.get_grid_wire_collision()}")
 
-            if self.chip.is_fully_connected():
+            return
+
+        for wire in self.chip.wires:
+            # wire is already connected so we skip
+            if wire.is_wire_connected():
+                continue 
+
+            start = wire.gates[0]  # gate1
+            end = wire.gates[1]    # gate2
+
+            # we add the wire to the occupy grid on position of gates:
+            self.chip.add_wire_segment_to_occupancy(coord=start, wire=wire)
+            self.chip.add_wire_segment_to_occupancy(coord=end, wire=wire)
+
+            # we overwrite the coords to be safe, since we are trying a new set:
+            wire.coords_wire_segments = [start, end]
+
+            # we attempt to find the route with A* algorithm
+            path = self.shortest_cable(self.chip, start, end, allow_short_circuit=True)
+
+            if path is not None:
                 if self.print_log_messages:
-                    print("All wires are connected")
-                    print(f"Has wire collision: {self.chip.get_grid_wire_collision()}")
-
-                return
-
-            for wire in self.chip.wires:
-                # wire is already connected so we skip
-                if wire.is_wire_connected():
-                    continue 
-
-                start = wire.gates[0]  # gate1
-                end = wire.gates[1]    # gate2
-
-                # we add the wire to the occupy grid on position of gates:
-                self.chip.add_wire_segment_to_occupancy(coord=start, wire=wire)
-                self.chip.add_wire_segment_to_occupancy(coord=end, wire=wire)
-
-                # we overwrite the coords to be safe, since we are trying a new set:
-                wire.coords_wire_segments = [start, end]
-
-                # we attempt to find the route with A* algorithm
-                path = self.shortest_cable(self.chip, start, end, offset=offset, allow_short_circuit=False)
-
-                if path is not None:
-                    if self.print_log_messages:
-                        print(f"Found shortest route with offset = {offset} and for wire = {wire.gates}")
-
-                    # we have found a viable path and insert the coords in the wire and set occupancy
-                    self.chip.add_wire_to_occupancy(path, wire)
-                    wire.append_wire_segment_list(path)
-            
-        # if we have not found a route for a wire with this max offset, we allow short_circuit
-        if self.allow_short_circuit:
-            for wire in self.chip.wires:
-                if not wire.is_wire_connected():
-
-                    start = wire.gates[0]  # gate1
-                    end = wire.gates[1]    # gate2
-
-                    force_path = self.bfs_route(self.chip, start, end, offset=1000, allow_short_circuit=True)
-                    # we add the path coords to the wire
-                    if force_path is not None:
-                        if self.print_log_messages:
-                            print(f"Found route while allowing short circuit")
-                        for coord in force_path:
-                            self.chip.add_wire_segment_to_occupancy(coord=coord, wire=wire)
-                            wire.append_wire_segment(coord)
+                    print(f"Found shortest route for wire = {wire.gates}")
+                # we have found a viable path and insert the coords in the wire and set occupancy
+                self.chip.add_wire_to_occupancy(path, wire)
+                wire.append_wire_segment_list(path)
 
         if not self.print_log_messages:
             return
@@ -142,9 +121,6 @@ class A_star(Greed):
 
         self.frontier = []
 
-        manhattan_dist = manhattan_distance(start_coords, end_coords)
-        limit = manhattan_dist + offset
-
         path = [start_coords]
         visited = set([start_coords])
 
@@ -154,19 +130,11 @@ class A_star(Greed):
 
         while self.frontier:
             cost, current_coords, path = heapq.heappop(self.frontier)
-            # print("cost:", cost)
             path_set = set(path)
-
-            # print(f"cost: {cost}, current coords = {current_coords}, gate 1 = {start_coords}, gate 2 = {end_coords}")
-            # print(f"path = {path}")
 
             if current_coords == end_coords:
                 # we have made it to the end and return the path to the end
                 return path[1:-1] if len(path) > 2 else []
-
-            # if path is longer than limit, we prune
-            if len(path) > limit:
-                continue
 
             for neighbour_coords in self.chip.get_neighbours(current_coords):
                 # pruning for shortest option

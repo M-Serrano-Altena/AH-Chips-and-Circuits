@@ -17,13 +17,13 @@ base_data_path = r"data/"
 chip = Chip(base_data_path, chip_id=chip_id, net_id= net_id, output_folder="output", padding=1)
 
 # 2) we use the algo with offset
-greedy = gr(chip, 30, True, True)
-# greedy.run()
-chip = greedy.run_random_netlist_orders(iterations=1000)
+greedy = gr(chip, 50, True, True)
+greedy.run()
+# chip = greedy.run_random_netlist_orders(iterations=1000)
 
 # 3) we check the final costs
 print("Total wire cost:", chip.calc_total_grid_cost())
 
 # 4) show and save the grid
-chip.show_grid("final_layout.html")
+chip.show_grid("final_layout.html", "Greed")
 chip.save_output("final_output.csv")

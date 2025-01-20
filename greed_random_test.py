@@ -24,5 +24,5 @@ greedy.run()
 print("Total wire cost:", chip0.calc_total_grid_cost())
 
 # 4) show and save the grid
-chip0.show_grid("final_layout.html")
+chip0.show_grid("final_layout.html", "Greed Random")
 chip0.save_output("final_output.csv")
