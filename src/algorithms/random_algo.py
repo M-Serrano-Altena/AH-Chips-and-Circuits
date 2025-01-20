@@ -1,6 +1,6 @@
 from src.classes.chip import Chip
 from src.algorithms.utils import *
-from src.algorithms.greed import Greed_random, Greed
+from src.algorithms.greed import Greed_random
 from collections import deque
 import random
 
@@ -47,7 +47,6 @@ class Random_random(Greed_random):
                 )
 
                 if path is not None:
-                    print(f"[Random] Found path with random_length = {random_length} for wire = {wire.gates}")
                     # append the path coords to the wire
                     for coord in path:
                         self.chip.add_wire_segment_to_occupancy(coord=coord, wire=wire)
@@ -59,7 +58,6 @@ class Random_random(Greed_random):
         # if not all wires were connected with random offsets
         # fallback to the greed approach to find solution
         if not self.chip.is_fully_connected():
-            print("[Random] Falling back to parent (Greed) approach")
             super().run()
 
     @staticmethod

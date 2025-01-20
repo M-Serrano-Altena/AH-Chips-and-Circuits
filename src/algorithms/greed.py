@@ -37,7 +37,6 @@ class Greed:
         # we start increasing the offset iteratively after having checked each wire
         # note: it is impossible for the offset to be uneven and still have a valid connection, thus we check only for even values
         for offset in range(0, self.max_offset, 2):
-            print(f"Checking offset: {offset}")
 
             # in greed_random this randomizes the order again per offset-check
             self.chip.wires = self.get_wire_order(self.chip.wires)
@@ -69,7 +68,6 @@ class Greed:
                         path = self.bfs_route(self.chip, start, end, offset = offset, allow_short_circuit=False)
 
                 if path is not None:
-                    print(f"Found shortest route with offset = {offset} and for wire = {wire.gates}")
                     # we have found a viable path and insert the coords in the wire and set occupancy
                     for coord in path:
                         self.chip.add_wire_segment_to_occupancy(coord=coord, wire=wire)
@@ -86,13 +84,12 @@ class Greed:
                     force_path = self.bfs_route(self.chip, start, end, offset=1000, allow_short_circuit=True)
                     # we add the path coords to the wire
                     if force_path is not None:
-                        print(f"Found route while allowing short circuit")
                         for coord in force_path:
                             self.chip.add_wire_segment_to_occupancy(coord=coord, wire=wire)
                             wire.append_wire_segment(coord)
 
         if not self.chip.is_fully_connected():
-            print("Warning: Not all wires were able to be connected")
+            pass
         else:
             print("All wires are connected")
             print(f"Status of wire collision: {self.chip.get_grid_wire_collision()}")
