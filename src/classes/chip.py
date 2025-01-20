@@ -5,6 +5,7 @@ import plotly.io as pio
 import pandas as pd
 import os
 from src.classes.wire import Wire
+from src.classes.occupancy import Occupancy
 from src.algorithms.utils import cost_function, Coords_3D, manhattan_distance
 
 def add_missing_extension(filename: str, extension: str):
@@ -36,6 +37,7 @@ class Chip:
         self.chip_id = chip_id
         self.net_id = net_id
         self.output_folder = output_folder
+        self.padding = padding
 
         chip_path = os.path.join(base_data_path, f"chip_{self.chip_id}")
         filepath_print = os.path.join(chip_path, f"print_{self.chip_id}.csv")
@@ -53,26 +55,16 @@ class Chip:
         self.gate_coords = set(self.gates.values())
 
         # grid size
-        self.grid_size_x = max(coords[0] for coords in self.gates.values()) + 1 + padding
-        self.grid_size_y = max(coords[1] for coords in self.gates.values()) + 1 + padding
-        self.grid_size_z = 8
-        self.grid_shape = (self.grid_size_x, self.grid_size_y, self.grid_size_z)
+        self.grid_range_x = (-padding + 1, max(coords[0] for coords in self.gates.values()) + padding)
+        self.grid_range_y = (-padding + 1, max(coords[1] for coords in self.gates.values()) + padding)
+        self.grid_range_z = (0, 7)
+        self.grid_shape = (self.grid_range_x[1] - self.grid_range_x[0], self.grid_range_y[1] - self.grid_range_y[0], self.grid_range_z[1] - self.grid_range_z[0])
 
         # initate occupancy grid self.occupancy[x][y][z] is empty set for free item
-        self.occupancy: list[list[list[set]]] = [
-            [
-                [
-                    set() for _ in range(self.grid_size_z)
-                ]
-                for _ in range(self.grid_size_y)
-            ]
-            for _ in range(self.grid_size_x)
-        ]
+        self.occupancy =  Occupancy()
         
         # we add the coordinates of the gates as identifiers in grid
-        for (x, y, z) in self.gate_coords:
-            self.occupancy[x][y][z].add("GATE")
-
+        self.occupancy.add_gates(self.gate_coords)
         self.wires: list[Wire] = []
 
         # read netlist
@@ -94,10 +86,9 @@ class Chip:
         netlist_reverse = [{value: key for key, value in dicts.items()} for dicts in self.netlist]
         self.netlist_double_sided = self.netlist + netlist_reverse
 
-        # initiate the wires with gate coords 
-        list_of_connections = [(gate_1, gate_2) for connection in self.netlist for gate_1, gate_2 in connection.items()]
-
-        for gate_1, gate_2 in list_of_connections:
+        # initiate the wires with gate coords
+        for connection in self.netlist:
+            gate_1, gate_2 = list(connection.items())[0]
             gate_1_coords = self.gates[gate_1]
             gate_2_coords = self.gates[gate_2]
 
@@ -121,7 +112,7 @@ class Chip:
         wire.append_wire_segment_list(wire_segment_list)
 
         for i, existing_wire in enumerate(self.wires):
-            if {existing_wire.coords[0], existing_wire.coords[-1]} == {gate_1_coords, gate_2_coords}:
+            if {existing_wire.coords_wire_segments[0], existing_wire.coords_wire_segments[-1]} == {gate_1_coords, gate_2_coords}:
                 self.wires[i] = wire
                 return
 
@@ -135,20 +126,64 @@ class Chip:
         for wire_segment_list in list_all_wire_segments:
             self.add_entire_wire(wire_segment_list)
 
-    @property
-    def not_fully_connected(self):
+    def is_fully_connected(self) -> bool:
         for wire in self.wires:
-            if wire.is_wire_connected():
-                continue
-            else: 
-                return True
-        return False
+            if not wire.is_wire_connected():
+                return False
+
+        return True
+    
+    def coord_within_boundaries(self, coord: Coords_3D) -> bool:
+        return (self.grid_range_x[0] <= coord[0] <= self.grid_range_x[1] 
+                and self.grid_range_y[0] <= coord[1] <= self.grid_range_y[1] 
+                and self.grid_range_z[0] <= coord[2] <= self.grid_range_z[1])
+
+    def get_neighbours(self, coord: Coords_3D) -> list[Coords_3D]:
+        """
+        Return valid neighboring coordinates in 3D (±x, ±y, ±z), 
+        ensuring we stay within the grid boundaries.
+        """
+        coords_dim = len(coord)
+        all_offset_combos = [(1, 0, 0), (-1, 0, 0), (0, 1, 0), (0, -1, 0), (0, 0, 1), (0, 0, -1)]
+        all_neighbour_coords = [
+            tuple(coord[i] + offset_coords[i] for i in range(coords_dim))
+            for offset_coords in all_offset_combos
+        ]
+
+        neighbours = [coord for coord in all_neighbour_coords if self.coord_within_boundaries(coord)]
+        return neighbours
+    
+
+    def coord_occupied_by_gate(self, coord: Coords_3D, own_gates: set[Coords_3D]|None = None) -> bool:
+        """
+        Checks if 'coord' is occupied by any gate, except its own
+        """
+        # if coord is own_gate return false
+        if own_gates and (coord in own_gates): 
+            return False
+        
+        # if gate is in general gate coords, return true else false
+        return coord in self.gate_coords
+    
+    def coord_is_occupied(self, coord: Coords_3D, own_gates: set[Coords_3D]|None = None) -> bool:
+        """ 
+        Checks if `coord` is already occupied by any wire or gate (except its own)
+        """
+
+        # return False if the coordinate is one of its own gates
+        if own_gates and (coord in own_gates):
+            return False
+        
+        coord_occupancy = self.get_coord_occupancy(coord)
+
+        # return true if the coordinate is occupied, otherwise false
+        return len(coord_occupancy) != 0 
 
 
     def get_intersection_coords(self) -> set[Coords_3D]:
         """Get the coordinates of all wire intersections"""
 
-        wires_coords_set = [set(wire.coords) for wire in self.wires]
+        wires_coords_set = [set(wire.coords_wire_segments) for wire in self.wires]
         shared_coords = set()
 
         for i in range(len(wires_coords_set)):
@@ -169,7 +204,7 @@ class Chip:
         If 3 wires intersect at 1 point, it counts as 2 intersections.
         
         """
-        wires_coords_set = [set(wire.coords) for wire in self.wires]
+        wires_coords_set = [set(wire.coords_wire_segments) for wire in self.wires]
         intersection_coords = self.get_intersection_coords()
         intersection_counter = 0
 
@@ -190,18 +225,37 @@ class Chip:
         """
         for i in range(wire1.length - 1):
             for j in range(wire2.length - 1):
-                wire1_coords1 = wire1.coords[i]
-                wire1_coords2 = wire1.coords[i + 1]
+                wire1_coords1 = wire1.coords_wire_segments[i]
+                wire1_coords2 = wire1.coords_wire_segments[i + 1]
 
-                wire2_coords1 = wire2.coords[j]
-                wire2_coords2 = wire2.coords[j + 1]
+                wire2_coords1 = wire2.coords_wire_segments[j]
+                wire2_coords2 = wire2.coords_wire_segments[j + 1]
 
                 # checks if subsequent coordinates in both wires are the same
-                if wire1_coords1 == wire2_coords1 and wire1_coords2 == wire2_coords2:
-                    return True
-                elif wire1_coords2 == wire2_coords1 and wire1_coords1 == wire2_coords2:
+                if {wire1_coords1, wire1_coords2} == {wire2_coords1, wire2_coords2}:
                     return True
                 
+        return False
+    
+    def wire_segment_causes_collision(self, neighbour: Coords_3D, current: Coords_3D) -> bool:
+        """Checks if wiresegment causes a collision in chip"""
+
+        neighbour_occupancy = self.get_coord_occupancy(neighbour, exclude_gates=True)
+        current_occupancy = self.get_coord_occupancy(current, exclude_gates=True)
+
+        # if one of both is empty, we can never have wire collision
+        if not neighbour_occupancy or not current_occupancy:
+            return False
+
+        shared_wire = neighbour_occupancy & current_occupancy
+         
+        # we have a wire collison if the coordinates in the wire class are subsequent and the wires match
+        if shared_wire:
+            for wire_piece in shared_wire:
+                for i in range(len(wire_piece.coords_wire_segments) - 1):
+                    if {current, neighbour} == {wire_piece.coords_wire_segments[i], wire_piece.coords_wire_segments[i + 1]}:
+                        return True
+
         return False
 
     
@@ -226,13 +280,23 @@ class Chip:
             return False
         
         return collision_counter
+    
+    def add_gate_to_occupancy(self, gate_coords: Coords_3D) -> None:
+        self.occupancy.add_gate(gate_coords)
+    
+    def add_wire_segment_to_occupancy(self, coord: Coords_3D, wire: Wire) -> None:
+        self.occupancy.add_wire_segment(coord, wire)
+
+    def get_coord_occupancy(self, coords: Coords_3D, exclude_gates: bool=False) -> set[Wire, str]:
+        return self.occupancy.get_coord_occupancy(coords, exclude_gates)
                 
 
     def calc_total_grid_cost(self) -> int:
         """Calculate the total wire cost of a given grid configuration"""
         tot_wire_length = sum(wire.length for wire in self.wires)
         intersection_amount = self.get_wire_intersect_amount()
-        return cost_function(wire_length=tot_wire_length, intersect_amount=intersection_amount)
+        collision_amount = self.get_grid_wire_collision()
+        return cost_function(wire_length=tot_wire_length, intersect_amount=intersection_amount, collision_amount=collision_amount)
 
 
     def show_grid(self, image_filename: str|None = None) -> None:
@@ -248,13 +312,13 @@ class Chip:
 
         # Plot the wires
         for i, wire in enumerate(self.wires):
-            gate_1_coords = wire.coords[0]
-            gate_2_coords = wire.coords[-1]
+            gate_1_coords = wire.coords_wire_segments[0]
+            gate_2_coords = wire.coords_wire_segments[-1]
 
             gate_1_id = self.coords_to_gate_map[gate_1_coords]
             gate_2_id = self.coords_to_gate_map[gate_2_coords]
 
-            wire_x, wire_y, wire_z = zip(*wire.coords)
+            wire_x, wire_y, wire_z = zip(*wire.coords_wire_segments)
             wire_plot = go.Scatter3d(x=wire_x, y=wire_y, z=wire_z, mode='lines', line=dict(width=3), name='Wires', showlegend=i == 0, hovertemplate=f'Wire {gate_1_id} -> {gate_2_id}: ' + '(%{x}, %{y}, %{z})<extra></extra>')
             data.append(wire_plot)
 
@@ -262,9 +326,9 @@ class Chip:
 
         fig.update_layout(
             scene=dict(
-            xaxis = dict(title='X Axis', range=[-0.5, self.grid_size_x - 1]),
-            yaxis = dict(title='Y Axis', range=[-0.5, self.grid_size_y - 1]),
-            zaxis = dict(title='Z Axis', range=[-0.5, self.grid_size_z - 1]),
+            xaxis = dict(title='X Axis', range=[self.grid_range_x[0], self.grid_range_x[1]]),
+            yaxis = dict(title='Y Axis', range=[self.grid_range_y[0], self.grid_range_y[1]]),
+            zaxis = dict(title='Z Axis', range=[-0.5 + self.grid_range_z[0], self.grid_range_z[1]]),
                 aspectmode='cube',
                 camera=dict(
                     eye=camera_eye,  # Adjust the camera position
@@ -272,7 +336,7 @@ class Chip:
                     up=dict(x=0, y=0, z=1),  # Up the camera view
                 ),
             ),
-            title=f"Chip {self.chip_id}, Net {self.net_id} (Cost = {total_cost}, Intersect Amount = {intersect_amount}, Collision Amount = {collision_amount})"
+            title=f"Chip {self.chip_id}, Net {self.net_id} (Cost = {total_cost}, Intersect Amount = {intersect_amount}, Collision Amount = {collision_amount}, Fully Connected: {self.is_fully_connected()})"
         )
 
         config = {
@@ -295,7 +359,7 @@ class Chip:
     def save_output(self, output_filename="output") -> None:
         """Save a given grid configuration as a csv file"""
         netlist_tuple = [(gate1, gate2) for net_connection in self.netlist for gate1, gate2 in net_connection.items()]
-        wire_list = [wire.coords for wire in self.wires]
+        wire_list = [wire.coords_wire_segments for wire in self.wires]
 
         # put netlist and wire sequences in a pandas dataframe
         output_df = pd.DataFrame({"net": pd.Series(netlist_tuple), "wires": pd.Series(wire_list)})

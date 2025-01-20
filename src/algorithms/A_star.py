@@ -1,6 +1,5 @@
 from src.classes.chip import Chip
-from src.algorithms.utils import Node, Coords_3D, INTERSECTION_COST, COLLISION_COST
-import itertools
+from src.algorithms.utils import Node, Coords_3D, INTERSECTION_COST, COLLISION_COST, manhattan_distance
 from math import inf
 import random
 import copy
@@ -18,6 +17,7 @@ class A_star:
             allow_intersections (bool): Whether intersections between wires are allowed
         """
         self.chip = chip
+        self.chip_og = copy.deepcopy(chip)
         self.allow_intersections = allow_intersections
         self.max_cost = max_cost
         self.best_n_nodes = best_n_nodes
@@ -28,20 +28,6 @@ class A_star:
         self.frontier: list[Node] = []
         self.all_wire_segments_list: list[list[Coords_3D]] = []
         self.all_wire_segments_set: list[set[Coords_3D]] = []
-
-    @staticmethod
-    def manhattan_distance(coord1, coord2) -> int:
-        """
-        Calculate the Manhattan distance between two coordinates
-        
-        Args:
-            coord1 (Coords_3D): The first coordinate
-            coord2 (Coords_3D): The second coordinate
-        
-        Returns:
-            int: The Manhattan distance between the two coordinates
-        """
-        return sum(abs(coord1[i] - coord2[i]) for i in range(len(coord1)))
     
     def get_existing_path_cost(self, node: Node) -> int:
         """
@@ -106,25 +92,29 @@ class A_star:
         Returns:
             int: The total heuristic cost including: manhattan distance, path cost, and extra cost
         """
-        manhattan_distance = self.manhattan_distance(current_node.state, goal_coords)
+        manhattan_dist = manhattan_distance(current_node.state, goal_coords)
         exising_path_cost = self.get_existing_path_cost(current_node)
         extra_cost = self.get_extra_wire_cost(current_node)
-        return manhattan_distance + exising_path_cost + extra_cost
+        return manhattan_dist + exising_path_cost + extra_cost
     
     def solve_n_random_netlist_orders(self, random_netlist_order_amt: int) -> list[list[Coords_3D]]:
         best_wire_list = []
         lowest_cost = inf
-        netlist_permutations = list(itertools.permutations(self.chip.netlist))
-        random.shuffle(netlist_permutations)
-        netlist_permutations = netlist_permutations[:random_netlist_order_amt]
-        for i, netlist in enumerate(netlist_permutations):
+        for i in range(random_netlist_order_amt):
+            netlist = copy.deepcopy(self.chip.netlist)
+            random.shuffle(netlist)
+            self.chip = copy.deepcopy(self.chip_og)
             self.chip.netlist = netlist
             print(i, ":", self.chip.netlist)
             self.solve()
             self.chip.add_entire_wires(self.all_wire_segments_list)
             cost = self.chip.calc_total_grid_cost()
-            if cost < lowest_cost:
+            is_fully_connected = self.chip.is_fully_connected()
+            print("cost =", cost, "; fully connected:", is_fully_connected)
+            if cost < lowest_cost and is_fully_connected:
                 lowest_cost = cost
+                # skip solutions with a higher cost than the lowest
+                self.max_cost = lowest_cost
                 print("lowest cost:", lowest_cost)
                 best_wire_list = copy.deepcopy(self.all_wire_segments_list)
 
@@ -132,28 +122,7 @@ class A_star:
             if lowest_cost == self.chip.manhatten_distance_sum:
                 return best_wire_list
 
-        return best_wire_list
-
-    def solve_all_netlist_orders(self) -> list[list[Coords_3D]]:
-        best_wire_list = []
-        lowest_cost = inf
-        for i, netlist in enumerate(itertools.permutations(self.chip.netlist)):
-            self.chip.netlist = netlist
-            print(i, ":", self.chip.netlist)
-            self.solve()
-            self.chip.add_entire_wires(self.all_wire_segments_list)
-            cost = self.chip.calc_total_grid_cost()
-            if cost < lowest_cost:
-                lowest_cost = cost
-                print(lowest_cost)
-                best_wire_list = self.all_wire_segments_list
-
-            # if the lowest found cost is the lowest theoretical cost then the optimal solution has been found
-            if lowest_cost == self.chip.manhatten_distance_sum:
-                return best_wire_list
-
-        return best_wire_list
-            
+        return best_wire_list            
     
 
     def solve(self) -> list[list[Coords_3D]]:
@@ -163,6 +132,9 @@ class A_star:
         Returns:
             list[list[Coords_3D]]: A list of wire segments for each connection
         """
+        self.all_wire_segments_list = []
+        self.all_wire_segments_set = []
+
         for connection in self.chip.netlist:
             gate_1_id, gate_2_id = list(connection.items())[0]
             gate_1_coords = self.chip.gates[gate_1_id]
@@ -204,6 +176,9 @@ class A_star:
             sorted_frontier = sorted(self.frontier, key=lambda node: node.cost)
             node = sorted_frontier[0]
 
+            if node.cost > self.max_cost:
+                return None
+
             frontier_size = len(self.frontier)
             if self.best_n_nodes is not None and frontier_size > self.best_n_nodes:
                 self.frontier = sorted_frontier[:self.best_n_nodes]
@@ -238,18 +213,7 @@ class A_star:
             node (Node): The current node
             goal_coords (Coords_3D): The goal coordinates
         """
-        coords_dim = len(node.state)
-        all_offset_combos = itertools.product([-1, 0, 1], repeat=coords_dim)
-        all_neighbour_coords = [
-            tuple(node.state[i] + offset_coords[i] for i in range(coords_dim))
-            for offset_coords in all_offset_combos
-            if sum(offset_coords[i] != 0 for i in range(coords_dim)) == 1 # ensures only 1 dimension is non-zero
-        ]
-
-        for neighbour_coords in all_neighbour_coords:
-            # skip out of bounds neighbours
-            if any(neighbour_coords[i] < 0 or neighbour_coords[i] >= self.chip.grid_shape[i] for i in range(coords_dim)):
-                continue
+        for neighbour_coords in self.chip.get_neighbours(node.state):
 
             # exclude neighbours that are already in the wire path
             if self.coord_in_node_path(neighbour_coords, node):
@@ -262,10 +226,11 @@ class A_star:
             if neighbour_node.cost >= COLLISION_COST:
                 continue
             
-            # # don't add gates other than start and goal gate to wire
-            if neighbour_coords in self.chip.gate_coords and neighbour_coords not in {self.start_gate.state, goal_coords}:
+            # don't add gates other than start and goal gate to wire
+            if neighbour_coords in self.chip.gate_coords - {self.start_gate.state, goal_coords}:
                 continue
-
+            
+            # a bit crude because heuristic cost could be larger than 300 without intersection
             if not self.allow_intersections:
                 if neighbour_node.cost >= 300:
                     continue
