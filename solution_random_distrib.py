@@ -4,14 +4,14 @@ import os
 from sys import argv
 import matplotlib.pyplot as plt
 
-BASE_DIR = os.path.dirname(__file__)
-os.chdir(BASE_DIR)
+# BASE_DIR = os.path.dirname(__file__)
+# os.chdir(BASE_DIR)
 
 OUTPUT_FOLDER = "output"
 
 base_data_path = r"data/"
-chip_id = 0
-net_id = 1
+chip_id = 1
+net_id = 4
 
 if len(argv) >= 2:
     chip_id = argv[1]
@@ -20,7 +20,7 @@ if len(argv) == 3:
     net_id = argv[2]
 
 
-iterations = 1000
+iterations = 100
 total_costs = []
 
 for i in range(iterations):

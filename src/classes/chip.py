@@ -7,6 +7,7 @@ import os
 from src.classes.wire import Wire
 from src.classes.occupancy import Occupancy
 from src.algorithms.utils import cost_function, Coords_3D, manhattan_distance
+from functools import lru_cache
 
 def add_missing_extension(filename: str, extension: str):
     """Add an extension to a filename if the extension is missing"""
@@ -38,6 +39,12 @@ class Chip:
         self.net_id = net_id
         self.output_folder = output_folder
         self.padding = padding
+
+        self.all_offset_combos = np.array([
+            [1, 0, 0], [-1, 0, 0],
+            [0, 1, 0], [0, -1, 0],
+            [0, 0, 1], [0, 0, -1]
+        ], dtype=int)
 
         chip_path = os.path.join(base_data_path, f"chip_{self.chip_id}")
         filepath_print = os.path.join(chip_path, f"print_{self.chip_id}.csv")
@@ -127,20 +134,18 @@ class Chip:
                 and self.grid_range_y[0] <= coord[1] <= self.grid_range_y[1] 
                 and self.grid_range_z[0] <= coord[2] <= self.grid_range_z[1])
 
+    @lru_cache(maxsize=None) 
     def get_neighbours(self, coord: Coords_3D) -> list[Coords_3D]:
         """
         Return valid neighboring coordinates in 3D (±x, ±y, ±z), 
         ensuring we stay within the grid boundaries.
         """
-        coords_dim = len(coord)
-        all_offset_combos = [(1, 0, 0), (-1, 0, 0), (0, 1, 0), (0, -1, 0), (0, 0, 1), (0, 0, -1)]
-        all_neighbour_coords = [
-            tuple(coord[i] + offset_coords[i] for i in range(coords_dim))
-            for offset_coords in all_offset_combos
+        coord_array = np.array(coord, dtype=int)
+        all_neighbours = coord_array + self.all_offset_combos
+        return [
+            tuple(neighbour) for neighbour in all_neighbours
+            if self.coord_within_boundaries(tuple(neighbour))
         ]
-
-        neighbours = [coord for coord in all_neighbour_coords if self.coord_within_boundaries(coord)]
-        return neighbours
     
 
     def coord_occupied_by_gate(self, coord: Coords_3D, own_gates: set[Coords_3D]|None = None) -> bool:

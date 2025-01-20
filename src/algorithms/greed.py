@@ -14,14 +14,14 @@ class Greed:
     Optional: sort wires, first fills in the wires with the lowest manhatthan distance
     """
 
-    def __init__(self, chip: "Chip", max_offset: int = 6, allow_short_circuit: bool = False, sort_wires: bool = False, shuffle_wires: bool=False, print_log: bool=True):
+    def __init__(self, chip: "Chip", max_offset: int = 6, allow_short_circuit: bool = False, sort_wires: bool = False, shuffle_wires: bool=False, print_log_messages: bool=True):
         self.chip = chip
         self.chip_og = copy.deepcopy(self.chip)
         self.max_offset = max_offset
         self.allow_short_circuit = allow_short_circuit
         self.sort_wires = sort_wires
         self.shuffle_wires = shuffle_wires
-        self.print_log = print_log
+        self.print_log_messages = print_log_messages
 
     def get_wire_order(self, wires: list[Wire]) -> list[Wire]:
         """
@@ -40,7 +40,7 @@ class Greed:
     def run_random_netlist_orders(self, iterations: int) -> Chip:
         self.sort_wires = False
         self.shuffle_wires = True
-        self.print_log = False
+        self.print_log_messages = False
 
         lowest_cost = inf
         for i in range(iterations):
@@ -65,7 +65,7 @@ class Greed:
         # we start increasing the offset iteratively after having checked each wire
         # note: it is impossible for the offset to be uneven and still have a valid connection, thus we check only for even values
         for offset in range(0, self.max_offset, 2):
-            if self.print_log:
+            if self.print_log_messages:
                 print(f"Checking offset: {offset}")
 
             # in greed_random this randomizes the order again per offset-check
@@ -98,7 +98,7 @@ class Greed:
                         path = self.bfs_route(self.chip, start, end, offset = offset, allow_short_circuit=False)
 
                 if path is not None:
-                    if self.print_log:
+                    if self.print_log_messages:
                         print(f"Found shortest route with offset = {offset} and for wire = {wire.gates}")
                     # we have found a viable path and insert the coords in the wire and set occupancy
                     for coord in path:
@@ -116,13 +116,13 @@ class Greed:
                     force_path = self.bfs_route(self.chip, start, end, offset=1000, allow_short_circuit=True)
                     # we add the path coords to the wire
                     if force_path is not None:
-                        if self.print_log:
+                        if self.print_log_messages:
                             print(f"Found route while allowing short circuit")
                         for coord in force_path:
                             self.chip.add_wire_segment_to_occupancy(coord=coord, wire=wire)
                             wire.append_wire_segment(coord)
 
-        if not self.print_log:
+        if not self.print_log_messages:
             return
         
         if not self.chip.is_fully_connected():
@@ -146,7 +146,7 @@ class Greed:
         manhattan_dist = manhattan_distance(start, end)
         limit = manhattan_dist + offset
 
-        # queue consists of tuple entries of (current node, [path])
+        # queue consists of tuple entries of (current coords, [path])
         queue = deque([(start, [start])])
         visited = set([start])
 
@@ -162,25 +162,27 @@ class Greed:
 
             for neighbour in self.chip.get_neighbours(current):
                 # pruning for shortest option
-                if neighbour not in visited:
-                    occupant_set = chip.get_coord_occupancy(neighbour)
+                if neighbour in visited:
+                    continue
 
-                    # skip collisions
-                    if self.chip.wire_segment_causes_collision(neighbour, current):
-                        continue
+                occupant_set = chip.get_coord_occupancy(neighbour)
 
-                    # if occupied by a gate which is not its end gate we continue
-                    if "GATE" in occupant_set and neighbour != end:
-                        continue
+                # skip collisions
+                if self.chip.wire_segment_causes_collision(neighbour, current):
+                    continue
 
-                    # if occupied by wire, and we do not allow short circuit, we continue
-                    if not allow_short_circuit and len(occupant_set) > 0 and "GATE" not in occupant_set:
-                        continue
+                # if occupied by a gate which is not its end gate we continue
+                if "GATE" in occupant_set and neighbour != end:
+                    continue
 
-                    visited.add(neighbour)
-                    
-                    # we add the current node and path to the queue
-                    queue.append((neighbour, path + [neighbour]))
+                # if occupied by wire, and we do not allow short circuit, we continue
+                if not allow_short_circuit and len(occupant_set) > 0 and "GATE" not in occupant_set:
+                    continue
+
+                visited.add(neighbour)
+                
+                # we add the current node and path to the queue
+                queue.append((neighbour, path + [neighbour]))
 
         return None
     

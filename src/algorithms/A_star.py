@@ -1,70 +1,41 @@
 from src.classes.chip import Chip
 from src.classes.wire import Wire
+from src.algorithms.greed import Greed
 from src.algorithms.utils import Node, Coords_3D, INTERSECTION_COST, COLLISION_COST, manhattan_distance
 from math import inf
-import random
-import copy
+from collections import deque
+import heapq
 
-class A_star:
+class A_star(Greed):
     """
     A* pathfinding algorithm implementation for routing wires in a chip
     """
-    def __init__(self, chip: Chip, allow_intersections=True, max_cost: int|float=inf, random_seed: int|None=None, best_n_nodes: int|None = None):
-        """
-        Initialize the A_star solver.
-        
-        Args:
-            chip (Chip): The chip layout containing grid information and netlist
-            allow_intersections (bool): Whether intersections between wires are allowed
-        """
-        self.chip = chip
-        self.chip_og = copy.deepcopy(chip)
-        self.best_chip = copy.deepcopy(chip)
-        self.allow_intersections = allow_intersections
-        self.max_cost = max_cost
-        self.best_n_nodes = best_n_nodes
-        
-        if random_seed is not None:
-            random.seed(random_seed)
 
-        self.frontier: list[Node] = []
-    
-    def get_existing_path_cost(self, node: Node) -> int:
-        """
-        Calculate the cost of the existing path from the start to the given node
-        
-        Args:
-            node (Node): The current node
-        
-        Returns:
-            int: The path cost from the start node to the current node
-        """
-        cost = 0
-        cursor = node
-        while cursor is not None:
-            cost += 1
-            cursor = cursor.parent
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
 
-        return cost
+        # uses a heap structure with 
+        self.frontier = []
+
+    def get_existing_path_cost(self, path: list[Coords_3D]) -> int:
+        """
+        Calculate the cost of the existing path
+        """
+        return len(path) - 1
     
-    def get_extra_wire_cost(self, current_node) -> int:
+    def get_extra_wire_cost(self, path: list[Coords_3D]) -> int:
         """
         Calculate the extra cost for the current node due to intersections or collisions
-        
-        Args:
-            current_node (Node): The node being evaluated
-        
-        Returns:
-            int: The extra cost due to intersections or collisions
         """
+
         # gate can't intersect or have a collision
-        if current_node.state in self.chip.gate_coords:
+        if path[-1] in self.chip.gate_coords:
             return 0
 
         extra_cost = 0
 
-        current_coords = current_node.state
-        parent_coords = current_node.parent.state
+        current_coords = path[-1]
+        parent_coords = path[-2]
 
         current_occupancy_set = self.chip.get_coord_occupancy(current_coords, exclude_gates=True)
 
@@ -77,7 +48,7 @@ class A_star:
         return extra_cost
 
     
-    def heuristic_function(self, current_node: Node, goal_coords: Coords_3D) -> int:
+    def heuristic_function(self, path: list[Coords_3D], goal_coords: Coords_3D) -> int:
         """
         Calculate the heuristic cost for the current node
         
@@ -88,157 +59,141 @@ class A_star:
         Returns:
             int: The total heuristic cost including: manhattan distance, path cost, and extra cost
         """
-        manhattan_dist = manhattan_distance(current_node.state, goal_coords)
-        exising_path_cost = self.get_existing_path_cost(current_node)
-        extra_cost = self.get_extra_wire_cost(current_node)
+        manhattan_dist = manhattan_distance(path[-1], goal_coords)
+        exising_path_cost = self.get_existing_path_cost(path)
+        extra_cost = self.get_extra_wire_cost(path)
         return manhattan_dist + exising_path_cost + extra_cost
-    
-    def solve_n_random_netlist_orders(self, random_netlist_order_amt: int) -> None:
-        lowest_cost = inf
-        best_chip = self.chip_og
-        for i in range(random_netlist_order_amt):
-            netlist = copy.deepcopy(self.chip_og.netlist)
-            random.shuffle(netlist)
-            self.chip = copy.deepcopy(self.chip_og)
-            self.chip.netlist = netlist
-            print(i, ":", self.chip.netlist)
-            self.solve()
-            cost = self.chip.calc_total_grid_cost()
-            is_fully_connected = self.chip.is_fully_connected()
-            print("cost =", cost, "; fully connected:", is_fully_connected)
-            if cost < lowest_cost and is_fully_connected:
-                lowest_cost = cost
-                # skip solutions with a higher cost than the lowest
-                self.max_cost = lowest_cost
-                self.best_chip = self.chip
+        
+    def run(self) -> None:
 
-            # if the lowest found cost is the lowest theoretical cost then the optimal solution has been found
-            if lowest_cost == self.chip.manhatten_distance_sum:
+        # we first sort the wires if needed
+        self.get_wire_order(self.chip.wires)
+
+        # we start increasing the offset iteratively after having checked each wire
+        # note: it is impossible for the offset to be uneven and still have a valid connection, thus we check only for even values
+        for offset in range(0, self.max_offset, 2):
+            if self.print_log_messages:
+                print(f"Checking offset: {offset}")
+
+            if self.chip.is_fully_connected():
+                if self.print_log_messages:
+                    print("All wires are connected")
+                    print(f"Has wire collision: {self.chip.get_grid_wire_collision()}")
+
                 return
-       
+
+            for wire in self.chip.wires:
+                # wire is already connected so we skip
+                if wire.is_wire_connected():
+                    continue 
+
+                start = wire.gates[0]  # gate1
+                end = wire.gates[1]    # gate2
+
+                # we add the wire to the occupy grid on position of gates:
+                self.chip.add_wire_segment_to_occupancy(coord=start, wire=wire)
+                self.chip.add_wire_segment_to_occupancy(coord=end, wire=wire)
+
+                # we overwrite the coords to be safe, since we are trying a new set:
+                wire.coords_wire_segments = [start, end]
+
+                # we attempt to find the route with A* algorithm
+                path = self.shortest_cable(self.chip, start, end, offset=offset, allow_short_circuit=False)
+
+                if path is not None:
+                    if self.print_log_messages:
+                        print(f"Found shortest route with offset = {offset} and for wire = {wire.gates}")
+
+                    # we have found a viable path and insert the coords in the wire and set occupancy
+                    self.chip.add_wire_to_occupancy(path, wire)
+                    wire.append_wire_segment_list(path)
+            
+        # if we have not found a route for a wire with this max offset, we allow short_circuit
+        if self.allow_short_circuit:
+            for wire in self.chip.wires:
+                if not wire.is_wire_connected():
+
+                    start = wire.gates[0]  # gate1
+                    end = wire.gates[1]    # gate2
+
+                    force_path = self.bfs_route(self.chip, start, end, offset=1000, allow_short_circuit=True)
+                    # we add the path coords to the wire
+                    if force_path is not None:
+                        if self.print_log_messages:
+                            print(f"Found route while allowing short circuit")
+                        for coord in force_path:
+                            self.chip.add_wire_segment_to_occupancy(coord=coord, wire=wire)
+                            wire.append_wire_segment(coord)
+
+        if not self.print_log_messages:
+            return
+        
+        if not self.chip.is_fully_connected():
+            print("Warning: Not all wires were able to be connected")
+        else:
+            print("All wires are connected")
+            print(f"Has wire collision: {self.chip.get_grid_wire_collision()}")
+
     
 
-    def solve(self) -> None:
-        """
-        Solve the routing problem for all connections in the chip's netlist
-        
-        Returns:
-            list[list[Coords_3D]]: A list of wire segments for each connection
-        """
+    def shortest_cable(self, 
+        chip: 'Chip', start_coords: Coords_3D, end_coords: Coords_3D, 
+        offset: int=0, allow_short_circuit: bool=False) -> list[Coords_3D]|None:
 
-        for connection in self.chip.netlist:
-            gate_1_id, gate_2_id = list(connection.items())[0]
-            gate_1_coords = self.chip.gates[gate_1_id]
-
-            # goal node
-            gate_2_coords = self.chip.gates[gate_2_id]
-
-            wire_segment_list = self.solve_single_wire(start_coords=gate_1_coords, goal_coords=gate_2_coords)
-            if wire_segment_list is None:
-                return []
-            
-            
-            self.chip.add_entire_wire(wire_segment_list=wire_segment_list)
-
-        return None
-
-            
-    def solve_single_wire(self, start_coords: Coords_3D, goal_coords: Coords_3D) -> list[Coords_3D]|None:
-        """
-        Solve the routing problem for a single wire between two gates
-        
-        Args:
-            start_coords (Coords_3D): The starting gate coordinates
-            goal_coords (Coords_3D): The goal gate coordinates
-        
-        Returns:
-            list[Coords_3D]: A list of coordinates representing the path for the wire
-        """
         self.frontier = []
-        self.start_gate = Node(start_coords, parent=None)
-        self.frontier.append(self.start_gate)
-        print_counter = 0
 
-        while len(self.frontier) < 100000:
-            # no solution
-            if len(self.frontier) == 0:
-                return None
+        manhattan_dist = manhattan_distance(start_coords, end_coords)
+        limit = manhattan_dist + offset
 
-            sorted_frontier = sorted(self.frontier, key=lambda node: node.cost)
-            node = sorted_frontier[0]
+        path = [start_coords]
+        visited = set([start_coords])
 
-            if node.cost > self.max_cost:
-                return None
+        start_cost = self.heuristic_function(path, end_coords)
 
-            frontier_size = len(self.frontier)
-            if self.best_n_nodes is not None and frontier_size > self.best_n_nodes:
-                self.frontier = sorted_frontier[:self.best_n_nodes]
+        heapq.heappush(self.frontier, (start_cost, start_coords, path))
 
-            self.frontier.remove(node)
-                
-            if frontier_size / 10000 > print_counter:
-                print("frontier size:", frontier_size)
-                print_counter += 1
+        while self.frontier:
+            cost, current_coords, path = heapq.heappop(self.frontier)
+            # print("cost:", cost)
+            path_set = set(path)
 
-            if node.state == goal_coords:
-                wire_segment_list = []
-                while node is not None:
-                    wire_segment_list.append(node.state)
-                    node = node.parent
+            # print(f"cost: {cost}, current coords = {current_coords}, gate 1 = {start_coords}, gate 2 = {end_coords}")
+            # print(f"path = {path}")
 
-                wire_segment_list = list(reversed(wire_segment_list))
-                return wire_segment_list
+            if current_coords == end_coords:
+                # we have made it to the end and return the path to the end
+                return path[1:-1] if len(path) > 2 else []
 
-            
-            self.add_neighbours_to_frontier(node, goal_coords)
-
-        # no found solution
-        return None
-
-
-    def add_neighbours_to_frontier(self, node: Node, goal_coords: Coords_3D) -> None:
-        """
-        Add the neighbours of the current node to the frontier for evaluation
-        
-        Args:
-            node (Node): The current node
-            goal_coords (Coords_3D): The goal coordinates
-        """
-        for neighbour_coords in self.chip.get_neighbours(node.state):
-
-            # exclude neighbours that are already in the wire path
-            if self.coord_in_node_path(neighbour_coords, node):
+            # if path is longer than limit, we prune
+            if len(path) > limit:
                 continue
 
-            neighbour_node = Node(state=neighbour_coords, parent=node)
-            neighbour_node.cost = self.heuristic_function(neighbour_node, goal_coords=goal_coords)
-
-            # don't add collisions to the frontier
-            if neighbour_node.cost >= COLLISION_COST:
-                continue
-            
-            # don't add gates other than start and goal gate to wire
-            if neighbour_coords in self.chip.gate_coords - {self.start_gate.state, goal_coords}:
-                continue
-            
-            # a bit crude because heuristic cost could be larger than 300 without intersection
-            if not self.allow_intersections:
-                if neighbour_node.cost >= 300:
+            for neighbour_coords in self.chip.get_neighbours(current_coords):
+                # pruning for shortest option
+                if neighbour_coords in visited:
                     continue
-            
-            # don't add nodes above the max cost
-            if neighbour_node.cost > self.max_cost:
-                continue
 
-            self.frontier.append(neighbour_node)
+                if neighbour_coords in path_set:
+                    continue
 
+                occupant_set = chip.get_coord_occupancy(neighbour_coords)
 
-    @staticmethod
-    def coord_in_node_path(coord: Coords_3D, node: Node):
-        cursor = node
-        while cursor is not None:
-            if coord == cursor.state:
-                return True
-            cursor = cursor.parent
+                # skip collisions
+                if self.chip.wire_segment_causes_collision(neighbour_coords, current_coords):
+                    continue
 
-        return False
+                # we skip coords that have gates other than the end goal
+                if "GATE" in occupant_set and neighbour_coords != end_coords:
+                    continue
+
+                # if occupied by wire, and we do not allow short circuit, we continue
+                if not allow_short_circuit and len(occupant_set) > 0 and "GATE" not in occupant_set:
+                    continue
+                
+                neighbour_path = path + [neighbour_coords]
+                neighbour_cost = self.heuristic_function(path=neighbour_path, goal_coords=end_coords)
+
+                # we add the current cost, coords and path to the heap
+                heapq.heappush(self.frontier, (neighbour_cost, neighbour_coords, neighbour_path))
+
+                visited.add(neighbour_coords)
