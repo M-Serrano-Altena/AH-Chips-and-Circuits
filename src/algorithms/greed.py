@@ -3,7 +3,8 @@ from src.classes.wire import *
 from src.algorithms.utils import *
 from collections import deque
 import random
-from numpy import sign
+from numpy import sign, inf
+import copy
 
 class Greed:
     """
@@ -13,11 +14,14 @@ class Greed:
     Optional: sort wires, first fills in the wires with the lowest manhatthan distance
     """
 
-    def __init__(self, chip: "Chip", max_offset: int = 10, allow_short_circuit: bool = False, sort_wires: bool = False):
+    def __init__(self, chip: "Chip", max_offset: int = 6, allow_short_circuit: bool = False, sort_wires: bool = False, shuffle_wires: bool=False, print_log: bool=True):
         self.chip = chip
+        self.chip_og = copy.deepcopy(self.chip)
         self.max_offset = max_offset
         self.allow_short_circuit = allow_short_circuit
         self.sort_wires = sort_wires
+        self.shuffle_wires = shuffle_wires
+        self.print_log = print_log
 
     def get_wire_order(self, wires: list[Wire]) -> list[Wire]:
         """
@@ -27,7 +31,31 @@ class Greed:
             wires.sort(
                 key=lambda w: manhattan_distance(w.coords_wire_segments[0], w.coords_wire_segments[-1]),
                 reverse=False)
+            
+        elif self.shuffle_wires:
+            random.shuffle(wires)
+
         return wires
+    
+    def run_random_netlist_orders(self, iterations: int) -> Chip:
+        self.sort_wires = False
+        self.shuffle_wires = True
+        self.print_log = False
+
+        lowest_cost = inf
+        for i in range(iterations):
+            print(i)
+            self.chip = copy.deepcopy(self.chip_og)
+            netlist = copy.deepcopy(self.chip_og.netlist)
+            random.shuffle(netlist)
+            self.chip.netlist = netlist
+            self.run()
+            cost = self.chip.calc_total_grid_cost()
+            if cost < lowest_cost and self.chip.is_fully_connected():
+                lowest_cost = cost
+                best_chip = self.chip
+            
+        return best_chip
 
     def run(self) -> None:
 
@@ -37,6 +65,8 @@ class Greed:
         # we start increasing the offset iteratively after having checked each wire
         # note: it is impossible for the offset to be uneven and still have a valid connection, thus we check only for even values
         for offset in range(0, self.max_offset, 2):
+            if self.print_log:
+                print(f"Checking offset: {offset}")
 
             # in greed_random this randomizes the order again per offset-check
             self.chip.wires = self.get_wire_order(self.chip.wires)
@@ -68,6 +98,8 @@ class Greed:
                         path = self.bfs_route(self.chip, start, end, offset = offset, allow_short_circuit=False)
 
                 if path is not None:
+                    if self.print_log:
+                        print(f"Found shortest route with offset = {offset} and for wire = {wire.gates}")
                     # we have found a viable path and insert the coords in the wire and set occupancy
                     for coord in path:
                         self.chip.add_wire_segment_to_occupancy(coord=coord, wire=wire)
@@ -88,11 +120,14 @@ class Greed:
                             self.chip.add_wire_segment_to_occupancy(coord=coord, wire=wire)
                             wire.append_wire_segment(coord)
 
+        if not self.print_log:
+            return
+        
         if not self.chip.is_fully_connected():
             pass
         else:
             print("All wires are connected")
-            print(f"Status of wire collision: {self.chip.get_grid_wire_collision()}")
+            print(f"Has wire collision: {self.chip.get_grid_wire_collision()}")
 
     def bfs_route(self, 
         chip: 'Chip', start: Coords_3D, end: Coords_3D, 
