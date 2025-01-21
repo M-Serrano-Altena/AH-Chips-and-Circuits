@@ -64,6 +64,7 @@ class Pseudo_random(Greed_random):
     def bfs_route_exact_length(chip: Chip, start: Coords_3D, end: Coords_3D, exact_length: int) -> list[Coords_3D]|None:
         """
         This function finds a route from start_gate to end_gate of exactly the length given 
+        It also shuffles the neighbours, thus making each route found random in shape
         """
         # queue consists of tuple entries of (current node, [path])
         queue = deque([(start, [start])])
@@ -74,6 +75,8 @@ class Pseudo_random(Greed_random):
             (current, path) = queue.popleft()
             dist = len(path)
             path_set = set(path)
+            neighbours = chip.get_neighbours(current)
+            random.shuffle(neighbours)
 
             # check for success
             if current == end and dist == exact_length:
@@ -84,7 +87,7 @@ class Pseudo_random(Greed_random):
                 continue
 
             # explore
-            for neighbour in chip.get_neighbours(current):
+            for neighbour in neighbours:
                 # if the coordinate is already in its own path we continue
                 if neighbour in path_set:
                     continue
