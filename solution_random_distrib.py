@@ -27,7 +27,7 @@ total_costs = []
 for i in range(iterations):
     print(i)
     chip = Chip(base_data_path, chip_id=chip_id, net_id=net_id, output_folder=OUTPUT_FOLDER)
-    algorithm = ra.Random_random(chip, max_offset=30, allow_short_circuit=True, sort_wires=True, random_seed=i)
+    algorithm = ra.Pseudo_random(chip, max_offset=30, allow_short_circuit=True, sort_wires=True, random_seed=i)
     algorithm.run()
     cost = chip.calc_total_grid_cost()
     if cost < COLLISION_COST:

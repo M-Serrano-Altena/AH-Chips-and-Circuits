@@ -1,6 +1,6 @@
 # main.py (or any script you prefer)
 from src.classes.chip import Chip
-from src.algorithms import IRRA
+from src.algorithms import random_algo as ra
 from sys import argv
 
 chip_id = 0
@@ -17,12 +17,12 @@ base_data_path = r"data/"
 chip0 = Chip(base_data_path, chip_id=chip_id, net_id=net_id, output_folder="output", padding=1)
 
 # 2) we use the algo with offset
-irra_irra = IRRA.IRRA(chip= chip0, iterations= 25, intersection_limit= 2, acceptable_intersection=100)
-irra_irra.run()
+random_random = ra.True_random(chip0, 8, True, True)
+random_random.run()
 
 # 3) we check the final costs
 print("Total wire cost:", chip0.calc_total_grid_cost())
 
 # 4) show and save the grid
-chip0.show_grid("final_layout.html", "IRRA")
+chip0.show_grid("final_layout.html")
 chip0.save_output("final_output.csv")

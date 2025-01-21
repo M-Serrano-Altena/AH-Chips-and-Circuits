@@ -4,7 +4,7 @@ from src.algorithms.greed import Greed_random
 from collections import deque
 import random
 
-class Random_random(Greed_random):
+class Pseudo_random(Greed_random):
 
     """
     First: makes wire connections at random for random offsets if possible
@@ -105,3 +105,85 @@ class Random_random(Greed_random):
                     queue.append((neighbour, path + [neighbour]))
 
         return None
+    
+
+class True_random(Pseudo_random):
+    """
+    A class that extends Random_random but ignores collisions and gate occupancy.
+    Wires can pass through anything. The BFS only ensures it doesn't revisit
+    the same coordinate in its own path (to avoid infinite loops).
+    """
+
+    def run(self) -> None:
+        # Same overall without fallback structure,
+        # And we call our unconstrained BFS
+        self.chip.wires = self.get_wire_order(self.chip.wires)
+
+        for wire in self.chip.wires:
+            if wire.is_wire_connected():
+                continue  # skip already-connected wires
+
+            start = wire.gates[0]
+            end = wire.gates[1]
+
+            # we add occupancy for the gates themselves
+            self.chip.add_wire_segment_to_occupancy(coord=start, wire=wire)
+            self.chip.add_wire_segment_to_occupancy(coord=end, wire=wire)
+            wire.coords_wire_segments = [start, end]  # reset coords
+
+            min_length = manhattan_distance(start, end)
+            max_length = self.max_offset + min_length
+
+            # generate and shuffle possible lengths
+            length_candidates = list(range(min_length - 1, max_length + 1, 2))
+            random.shuffle(length_candidates)
+
+            for random_length in length_candidates:
+                print(f"Checking: {random_length}")
+                path = self.bfs_route_exact_length_unconstrained(
+                    chip=self.chip,
+                    start=start,
+                    end=end,
+                    exact_length=random_length
+                )
+
+                if path is not None:
+                    print(f"We have found path...")
+                    # we found a path: add to occupancy & wire
+                    for coord in path:
+                        self.chip.add_wire_segment_to_occupancy(coord=coord, wire=wire)
+                        wire.append_wire_segment(coord)
+                    break
+
+    @staticmethod
+    def bfs_route_exact_length_unconstrained(chip: Chip, start: Coords_3D, end: Coords_3D,exact_length: int) -> list[Coords_3D] | None:
+
+        """
+        Finds a path of exactly `exact_length` steps from `start` to `end`
+        ignoring collisions/gates entirely. We only avoid revisiting the same
+        coordinate in our current BFS path to prevent loops.
+        Chooses path of exact length at random because neighbours are shuffled
+        """
+        queue = deque([(start, [start])])
+
+        while queue:
+            current, path = queue.popleft()
+            dist = len(path)
+            neighbours = chip.get_neighbours(current)
+            random.shuffle(neighbours)
+
+            # success check
+            if dist == exact_length and current == end:
+                return path[1:-1] if dist > 2 else []
+
+            # prune
+            if dist > exact_length:
+                continue
+
+            # explore neighbors unconstrained
+            for neighbor in neighbours:
+                if neighbor in path:
+                    continue  # avoid looping over own path
+               
+                queue.append((neighbor, path + [neighbor]))
+        
