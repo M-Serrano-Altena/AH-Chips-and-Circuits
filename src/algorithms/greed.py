@@ -67,10 +67,9 @@ class Greed:
         # note: it is impossible for the offset to be uneven and still have a valid connection, thus we check only for even values
         for offset in range(0, self.max_offset, 2):
             if self.print_log_messages:
-                print(f"Checking offset: {offset}")
 
-            # in greed_random this randomizes the order again per offset-check
-            self.chip.wires = self.get_wire_order(self.chip.wires)
+                # in greed_random this randomizes the order again per offset-check
+                self.chip.wires = self.get_wire_order(self.chip.wires)
 
             for wire in self.chip.wires:
                 # wire is already connected so we skip

@@ -46,7 +46,8 @@ class IRRA(Random_random):
         """
         for iteration in range(1, self.iterations + 1):
             print(f"[IRRA] Starting iteration {iteration}/{self.iterations}:")
-            i = 0
+            i = 0 # iteration
+            o = 0 # optimal solution check, now if o = 5; we have 5 times optimal solution with same cost, we stop algorithm
 
             # 1) clear occupancy and reset wire paths
             self.reset_chip()
@@ -54,25 +55,26 @@ class IRRA(Random_random):
             # 2) let parent produce a random wiring
             super().run()
 
-
-            # repeat this step untill we have wiring that has ascceptable intersection amount
-            while(self.chip.get_wire_intersect_amount() >= (self.acceptable_intersection * self.gate_amount)):
+            # repeat this step untill we find a configuration that is fully connected 
+            # optional) repeat this step untill we have wiring that has ascceptable intersection amount 
+            while(self.chip.get_wire_intersect_amount() >= (self.acceptable_intersection * self.gate_amount) or not self.chip.is_fully_connected()):
                 self.reset_chip()
                 super().run()
-                print(f"Finding configuration: {i}, intersections: {self.chip.get_wire_intersect_amount()} for {self.gate_amount}")
+                print(f"Finding configuration: {i}, intersections: {self.chip.get_wire_intersect_amount()}")
                 i += 1
 
             # 3) try to reroute (reduce intersections) in a loop
             print(f"Started rerouting...")
             self.intersections_rerouting()
 
-            # 4) TODO: quick optimization of the route found
+            # 4) quick optimization of the route found
             print(f"Optimizing costs...")
             print(f"Current cost: {self.chip.calc_total_grid_cost()}")
-            # self.greed_optimize()
+            
+            self.greed_optimize()
 
+            print(f"Costs after optimization: {self.chip.calc_total_grid_cost()}")
 
-            print(f"Optimized, current cost: {self.chip.calc_total_grid_cost()}")
             # 5) check if we beat the best cost or reached the intersection limit
             current_cost = self.chip.calc_total_grid_cost()
             current_intersections = self.chip.get_wire_intersect_amount()
@@ -84,9 +86,13 @@ class IRRA(Random_random):
                     # we copy the segments of wire into the best config list
                     wire.coords_wire_segments[:] for wire in self.chip.wires
                 ]
+                o = 0
+            
+            if current_cost == self.best_cost:
+                o += 1
 
             # if at or below intersection_limit, we can stop early
-            if current_intersections <= self.intersection_limit:
+            if current_intersections <= self.intersection_limit and o > 4:
                 print("[IRRA] Intersection limit reached or better. Stopping early.")
                 break
 
@@ -177,10 +183,15 @@ class IRRA(Random_random):
         )
 
         if new_path:
-            # if successful, add new path segments to occupancy
+
+            # if successful, add new path
+
+            start = wire.gates[0]
+            end = wire.gates[1]
+            wire.coords_wire_segments = [start] + new_path + [end]
+
             for c in new_path:
                 self.chip.add_wire_segment_to_occupancy(c, wire)
-                wire.append_wire_segment(c)
 
             # check whether intersection count improved
             new_intersections = self.chip.get_wire_intersect_amount()
@@ -218,11 +229,75 @@ class IRRA(Random_random):
         # clear chip to insert optimal layout found
         self.reset_chip()
 
-        # add the best wire coordinates
-        for wire, coords in zip(self.chip.wires, self.best_configuration):
-            start = wire.gates[0]
-            end = wire.gates[1]
-            wire.coords_wire_segments = [start, end]
-            for c in coords:
-                self.chip.add_wire_segment_to_occupancy(c, wire)
-                wire.append_wire_segment(c)
+        for wire in self.chip.wires:
+            for optimal_wire in self.best_configuration:
+                # if the gates correspond:
+                if (wire.gates[0] == optimal_wire[0] and wire.gates[1] == optimal_wire[-1]) or (wire.gates[1] == optimal_wire[0] and wire.gates[0] == optimal_wire[-1]):
+                    wire.append_wire_segment_list(optimal_wire)
+
+    def greed_optimize(self) -> None:
+        """
+        After the grid is fully connected and intersections are minimized,
+        do a local 'greedy' improvement pass to reduce total wire length/cost.
+
+        For each wire:
+        1) Temporarily remove it from occupancy.
+        2) BFS-route again (prioritizing short paths).
+        3) Compare new total cost (or intersections) vs. old. Keep if better.
+            Otherwise revert to the old route.
+        """
+        
+        for wire in self.chip.wires:
+            # snapshot old wire state
+            old_coords = wire.coords_wire_segments[:]
+            old_cost   = self.chip.calc_total_grid_cost()
+
+            # 1) remove old wire from occupancy 
+            for coord in old_coords:
+                if coord not in wire.gates:
+                    self.chip.occupancy.remove_from_occupancy(coord, wire)
+
+            # 2) attempt BFS for a new, presumably shorter route.
+            start, end = wire.gates[0], wire.gates[1]
+            wire.coords_wire_segments = [start, end]  
+            new_path = self.bfs_route(
+                chip=self.chip,
+                start=start,
+                end=end,
+                offset=10,              
+                allow_short_circuit=False
+            )
+
+            # If BFS yields a path, see whether it improves the total cost
+            if new_path:
+        
+                proposed_wire = [start] + new_path + [end]
+
+                # temporarily add proposed route to occupancy
+                for coord in proposed_wire[1:-1]:
+                    self.chip.add_wire_segment_to_occupancy(coord, wire)
+                wire.coords_wire_segments = proposed_wire
+
+                # check new cost
+                new_cost = self.chip.calc_total_grid_cost()
+
+                # 3) if no improvement, revert
+                if new_cost >= old_cost:
+                    # remove newly added route
+                    for coord in proposed_wire[1:-1]:
+                        self.chip.occupancy.remove_from_occupancy(coord, wire)
+                    # restore old wire
+                    wire.coords_wire_segments = old_coords
+                    for coord in old_coords:
+                        if coord not in wire.gates:
+                            self.chip.add_wire_segment_to_occupancy(coord, wire)
+            else:
+                # BFS failed to find a path -> revert
+                wire.coords_wire_segments = old_coords
+                for coord in old_coords:
+                    if coord not in wire.gates:
+                        self.chip.add_wire_segment_to_occupancy(coord, wire)
+
+
+
+
