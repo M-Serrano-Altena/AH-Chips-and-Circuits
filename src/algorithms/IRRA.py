@@ -1,11 +1,11 @@
 from src.classes.chip import Chip
 from src.algorithms.utils import *
-from src.algorithms.random_algo import Random_random
+from src.algorithms.random_algo import Pseudo_random
 from collections import deque
 import random
 import copy
 
-class IRRA(Random_random):
+class IRRA(Pseudo_random):
 
     """
     Iterative Random Rerouting Algorithm (IRRA):
