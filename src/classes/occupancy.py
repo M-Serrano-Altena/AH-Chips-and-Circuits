@@ -9,14 +9,14 @@ class Occupancy:
     def __init__(self):
         # default dict avoids overhead of creating an empty set each time
         self.occupancy: defaultdict[Coords_3D, set[str|'Wire']] = defaultdict(set)
-        self._occupancy_without_gates: defaultdict[Coords_3D, set['Wire']] = defaultdict(set)
+        self.occupancy_without_gates: defaultdict[Coords_3D, set['Wire']] = defaultdict(set)
 
     def __repr__(self):
         return f"Occupancy({self.occupancy})"
     
     def reset(self) -> None:
         self.occupancy.clear()
-        self._occupancy_without_gates.clear()
+        self.occupancy_without_gates.clear()
     
     def remove_from_occupancy(self, coord: Coords_3D, wire: 'Wire') -> None:
         if coord not in self.occupancy:
@@ -35,7 +35,7 @@ class Occupancy:
 
     def add_wire_segment(self, coords: Coords_3D, wire: 'Wire') -> None:
         self.occupancy[coords].add(wire)
-        self._occupancy_without_gates[coords].add(wire)
+        self.occupancy_without_gates[coords].add(wire)
 
     def add_wire(self, wire_segment_list: list[Coords_3D], wire: 'Wire') -> None:
         for wire_segment in wire_segment_list:
@@ -50,7 +50,7 @@ class Occupancy:
 
     def get_coord_occupancy(self, coords: Coords_3D, exclude_gates: bool=False) -> set[str, 'Wire']:
         if exclude_gates:
-            return self._occupancy_without_gates[coords]
+            return self.occupancy_without_gates[coords]
         
         return self.occupancy[coords]
     

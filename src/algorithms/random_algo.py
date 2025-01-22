@@ -148,7 +148,7 @@ class True_random(Pseudo_random):
                 )
 
                 if path is not None:
-                    print(f"We have found path...")
+                    print(f"We have a found path...")
                     # we found a path: add to occupancy & wire
                     for coord in path:
                         self.chip.add_wire_segment_to_occupancy(coord=coord, wire=wire)
@@ -168,6 +168,7 @@ class True_random(Pseudo_random):
 
         while queue:
             current, path = queue.popleft()
+            path_set = set(path)
             dist = len(path)
             neighbours = chip.get_neighbours(current)
             random.shuffle(neighbours)
@@ -181,9 +182,12 @@ class True_random(Pseudo_random):
                 continue
 
             # explore neighbors unconstrained
-            for neighbor in neighbours:
-                if neighbor in path:
+            for neighbour in neighbours:
+                if neighbour in path_set:
                     continue  # avoid looping over own path
+
+                if neighbour == end and dist + 1 != exact_length:
+                    continue
                
-                queue.append((neighbor, path + [neighbor]))
+                queue.append((neighbour, path + [neighbour]))
         

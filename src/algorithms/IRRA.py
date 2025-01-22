@@ -5,6 +5,11 @@ from collections import deque
 import random
 import copy
 
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from src.classes.wire import Wire
+
 class IRRA(Pseudo_random):
 
     """
@@ -32,7 +37,7 @@ class IRRA(Pseudo_random):
 
         # we use these variables to keep track of the best solution
         self.best_cost = float("inf")
-        self.best_configuration: list[list[tuple[int,int,int]]] = []
+        self.best_configuration: list[list[Coords_3D]] = []
 
     def run(self) -> None:
         """
@@ -71,7 +76,7 @@ class IRRA(Pseudo_random):
             print(f"Optimizing costs...")
             print(f"Current cost: {self.chip.calc_total_grid_cost()}")
             
-            self.greed_optimize()
+            #self.greed_optimize()
 
             print(f"Costs after optimization: {self.chip.calc_total_grid_cost()}")
 
@@ -133,7 +138,7 @@ class IRRA(Pseudo_random):
 
             for coord in intersection_coords:
                 # we find all wires passing through this intersection coordinate
-                occupation_set = self.chip.occupancy.occupancy[coord]
+                occupation_set = self.chip.get_coord_occupancy(coord, exclude_gates=True)
                 
                 # if no short circuit we continue
                 if len(occupation_set) < 2:
@@ -154,7 +159,7 @@ class IRRA(Pseudo_random):
             if not improved or intersection_count_after >= intersection_count_before:
                 return
 
-    def reroute_wire(self, wire) -> bool:
+    def reroute_wire(self, wire: 'Wire') -> bool:
         """
         Removes a wire from the occupancy grid and tries to find a new
         shortcircuit-free path for it. Returns True if rerouting improved the situation,
