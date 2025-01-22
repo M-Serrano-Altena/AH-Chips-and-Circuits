@@ -223,7 +223,6 @@ class Greed_random(Greed):
         while queue:
             current, path = queue.popleft()
             neighbours = chip.get_neighbours(current)
-            random.shuffle(neighbours)
 
             if current == end:
                 # we have made it to the end and return the path to the end

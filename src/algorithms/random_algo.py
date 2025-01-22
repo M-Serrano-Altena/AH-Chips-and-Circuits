@@ -76,7 +76,7 @@ class Pseudo_random(Greed_random):
             dist = len(path)
             path_set = set(path)
             neighbours = chip.get_neighbours(current)
-            random.shuffle(neighbours)
+            #random.shuffle(neighbours)
 
             # check for success
             if current == end and dist == exact_length:
