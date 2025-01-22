@@ -31,10 +31,11 @@ class IRRA(Pseudo_random):
 
 
         # we use these variables to keep track of the best solution
-        self.best_cost = float("inf")
-        self.best_configuration: list[list[tuple[int,int,int]]] = []
+        self.best_cost = float("inf")   #inf, such that current_cost < best_cost
+        self.best_chip: Chip|None = None
+        self.chip_og = copy.deepcopy(chip)
 
-    def run(self) -> None:
+    def run(self) -> Chip:
         """
         Running this algorithm as follows:
         1) For up to `self.iterations` attempts:
@@ -82,36 +83,32 @@ class IRRA(Pseudo_random):
 
             if current_cost < self.best_cost:
                 self.best_cost = current_cost
-                self.best_configuration = [
-                    # we copy the segments of wire into the best config list
-                    wire.coords_wire_segments[:] for wire in self.chip.wires
-                ]
+                self.best_chip = copy.deepcopy(self.chip)
                 o = 0
             
+            # we encounter the same cost, perhaps optimal reached, add 1 optimal iteration
             if current_cost == self.best_cost:
                 o += 1
 
-            # if at or below intersection_limit, we can stop early
+            # if at or below intersection_limit and above optimal iterations, we can stop early
             if current_intersections <= self.intersection_limit and o > 4:
                 print("[IRRA] Intersection limit reached or better. Stopping early.")
                 break
-
-        # after all iterations, restore the best solution found
-        self.restore_best_solution()
 
         final_cost = self.chip.calc_total_grid_cost()
         final_intersections = self.chip.get_wire_intersect_amount()
         print(f"[IRRA] Done. Best cost={self.best_cost}, Final cost={final_cost}, Intersections={final_intersections}")
 
+        return self.best_chip
+
     def reset_chip(self) -> None:
 
-        # initializes the occupancy grid again
         self.chip.occupancy.reset()
         self.chip.occupancy.add_gates(self.chip.gate_coords)
 
-        # inserting the default gate wire_segments
         for wire in self.chip.wires:
             wire.coords_wire_segments = [wire.gates[0], wire.gates[1]]
+
 
     def intersections_rerouting(self) -> None:
         """
@@ -222,18 +219,12 @@ class IRRA(Pseudo_random):
         """
         After all iterations, put the chip back to the best configuration found.
         """
-        if not self.best_configuration:
+        if not self.best_chip:
             print("[IRRA] No valid solution found better than initial. Keeping current layout.")
             return
 
         # clear chip to insert optimal layout found
-        self.reset_chip()
-
-        for wire in self.chip.wires:
-            for optimal_wire in self.best_configuration:
-                # if the gates correspond:
-                if (wire.gates[0] == optimal_wire[0] and wire.gates[1] == optimal_wire[-1]) or (wire.gates[1] == optimal_wire[0] and wire.gates[0] == optimal_wire[-1]):
-                    wire.append_wire_segment_list(optimal_wire)
+        self.chip = copy.deepcopy(self.best_chip)
 
     def greed_optimize(self) -> None:
         """
