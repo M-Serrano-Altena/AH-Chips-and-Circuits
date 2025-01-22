@@ -14,7 +14,7 @@ class Greed:
     Optional: sort wires, first fills in the wires with the lowest manhatthan distance
     """
 
-    def __init__(self, chip: "Chip", max_offset: int = 6, allow_short_circuit: bool = False, sort_wires: bool = False, shuffle_wires: bool=False, print_log_messages: bool=True):
+    def __init__(self, chip: "Chip", max_offset: int = 6, allow_short_circuit: bool = False, sort_wires: bool = False, shuffle_wires: bool=False, print_log_messages: bool=False):
         self.chip = chip
         self.chip_og = copy.deepcopy(self.chip)
         self.max_offset = max_offset
@@ -54,7 +54,7 @@ class Greed:
                 lowest_cost = cost
                 best_chip = self.chip
 
-            print(f"{i}: cost = {cost}, lowest cost = {lowest_cost}")
+            #print(f"{i}: cost = {cost}, lowest cost = {lowest_cost}")
             
         return best_chip
 
@@ -88,14 +88,6 @@ class Greed:
 
                 # we attempt to find the route breath first 
                 path = self.bfs_route(self.chip, start, end, offset = offset, allow_short_circuit=False)
-
-                # if path is possible, we branch off to add option to randomize for child
-                if path is not None and offset == 0:
-                    path = self.shortest_cable(self.chip, start, end, offset = offset, allow_short_circuit=False)
-
-                    # we were not able to find a route by randomization
-                    if path is None:
-                        path = self.bfs_route(self.chip, start, end, offset = offset, allow_short_circuit=False)
 
                 if path is not None:
                     if self.print_log_messages:
@@ -152,6 +144,7 @@ class Greed:
 
         while queue:
             current, path = queue.popleft()
+
             if current == end:
                 # we have made it to the end and return the path to the end
                 return path[1:-1] if len(path) > 2 else []
@@ -160,7 +153,7 @@ class Greed:
             if len(path) > limit:
                 continue
 
-            for neighbour in self.chip.get_neighbours(current):
+            for neighbour in chip.get_neighbours(current):
                 # pruning for shortest option
                 if neighbour in visited:
                     continue
@@ -186,12 +179,6 @@ class Greed:
 
         return None
     
-    def shortest_cable(self, 
-        chip: 'Chip', start: Coords_3D, end: Coords_3D, 
-        offset: int=0, allow_short_circuit: bool=False) -> list[Coords_3D]|None:
-
-        return self.bfs_route(chip, start, end, offset, allow_short_circuit)
-    
 
 class Greed_random(Greed):
     """
@@ -214,52 +201,59 @@ class Greed_random(Greed):
 
         return wires
     
-    def shortest_cable(self, 
+    def bfs_route(self, 
         chip: 'Chip', start: Coords_3D, end: Coords_3D, 
         offset: int=0, allow_short_circuit: bool=False) -> list[Coords_3D]|None:
-        """Adds a shortest possible wire route to the wire variable (chosen at random)"""
+        """
+        We use a breath first technique to find a route based on the Manhattan technique with an added max_extra_length to the minimal length of the route.
+        If we have found a path, we return the path as a list of tuples (without gate coords), otherwise we return None
 
-        limit = 1000
-
-        # we calculate how many steps we need to make in each direction as a vector
-        dr = tuple(end[i] - start[i] for i in range(len(end)))
-
-        moves = []
-
-        # add all moves needed to take to go to the opposite gate
-        # each move is 1 or -1 in only one direction (e.g. (1,0,0) means 1 move right)
-        for i, dr_component in enumerate(dr):
-            moves.extend(abs(dr_component) * [tuple(sign(dr_component) * int(i == j) for j in range(len(dr)))])
-
-
-        # we have all our moves we need to make for the shortest route, now we shuffle the order to randomize route 
-        counter = 0
-        while counter < limit:
-
-            # each try we shuffle the minimized route to find a random path that avoids collision and short circuit
-            counter += 1
-            path = []
-            current_coord = start
-            random.shuffle(moves)
-
-            for move in moves:
-                
-                previous_coord = current_coord
-                current_coord = tuple(current_coord[i] + move[i] for i in range(len(current_coord)))
-
-                # continue if collision is found
-                if self.chip.wire_segment_causes_collision(previous_coord, current_coord):
-                    continue
-                
-                # if short circuit is not allowed, we continue if we short circuit
-                if not allow_short_circuit:
-                    if self.chip.coord_is_occupied(current_coord, [start, end]):
-                        continue
-                
-                path.append(current_coord)
-            
-            # return path if it isnt empty and last entry is gate
-            if len(path) != 0 and path[-1] == end:
-                return path[:-1]
+        Optional: boolian to the function to allow or not allow short circuiting of the wire. 
+        Optional: boolian to find only paths of certain length (minimal + offset)
         
+        """
+
+        manhattan_dist = manhattan_distance(start, end)
+        limit = manhattan_dist + offset
+
+        # queue consists of tuple entries of (current coords, [path])
+        queue = deque([(start, [start])])
+        visited = set([start])
+
+        while queue:
+            current, path = queue.popleft()
+            neighbours = chip.get_neighbours(current)
+
+            if current == end:
+                # we have made it to the end and return the path to the end
+                return path[1:-1] if len(path) > 2 else []
+
+            # if path is longer than limit, we prune
+            if len(path) > limit:
+                continue
+
+            for neighbour in neighbours:
+                # pruning for shortest option
+                if neighbour in visited:
+                    continue
+
+                occupant_set = chip.get_coord_occupancy(neighbour)
+
+                # skip collisions
+                if self.chip.wire_segment_causes_collision(neighbour, current):
+                    continue
+
+                # if occupied by a gate which is not its end gate we continue
+                if "GATE" in occupant_set and neighbour != end:
+                    continue
+
+                # if occupied by wire, and we do not allow short circuit, we continue
+                if not allow_short_circuit and len(occupant_set) > 0 and "GATE" not in occupant_set:
+                    continue
+
+                visited.add(neighbour)
+                
+                # we add the current node and path to the queue
+                queue.append((neighbour, path + [neighbour]))
+
         return None

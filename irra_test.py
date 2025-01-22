@@ -17,12 +17,13 @@ base_data_path = r"data/"
 chip0 = Chip(base_data_path, chip_id=chip_id, net_id=net_id, output_folder="output", padding=1)
 
 # 2) we use the algo with offset
-irra_irra = IRRA.IRRA(chip= chip0, iterations= 25, intersection_limit= 2, acceptable_intersection=100)
-irra_irra.run()
+irra_irra = IRRA.IRRA(chip= chip0, iterations= 1000, intersection_limit= 2, acceptable_intersection=10)
+best_chip = irra_irra.run()
 
 # 3) we check the final costs
-print("Total wire cost:", chip0.calc_total_grid_cost())
+print("Total wire cost:", best_chip.calc_total_grid_cost())
+print(f"Intersections are at: {best_chip.get_intersection_coords()}")
 
 # 4) show and save the grid
-chip0.show_grid("final_layout.html", "IRRA")
-chip0.save_output("final_output.csv")
+best_chip.show_grid("final_layout.html", "IRRA")
+best_chip.save_output("final_output.csv")
