@@ -306,11 +306,12 @@ class Chip:
     def remove_wire_from_occupancy(self, wire: Wire) -> None:
         self.occupancy.remove_wire_from_occupancy(wire)
                 
-    def calc_total_grid_cost(self) -> int:
+    def calc_total_grid_cost(self, ignore_collision_cost: bool=False) -> int:
         """Calculate the total wire cost of a given grid configuration"""
         tot_wire_length = sum(wire.length for wire in self.wires)
         intersection_amount = self.get_wire_intersect_amount()
-        collision_amount = self.get_grid_wire_collision()
+        if not ignore_collision_cost:
+            collision_amount = self.get_grid_wire_collision()
         return cost_function(wire_length=tot_wire_length, intersect_amount=intersection_amount, collision_amount=collision_amount)
 
 
