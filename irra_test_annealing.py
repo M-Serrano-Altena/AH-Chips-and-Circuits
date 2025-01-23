@@ -25,9 +25,5 @@ print("Total wire cost:", best_chip.calc_total_grid_cost())
 print(f"Intersections are at: {best_chip.get_intersection_coords()}")
 
 # 4) show and save the grid
-base_save_name = f"chip_{chip_id}_net_{net_id}"
-plot_save_name = "layout_" + base_save_name
-csv_save_name = "output_" + base_save_name
-
-best_chip.show_grid(plot_save_name, "A*")
-best_chip.save_output(csv_save_name)
+best_chip.show_grid("final_layout.html", "IRRA Annealing")
+best_chip.save_output("final_output.csv")
