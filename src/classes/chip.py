@@ -8,6 +8,7 @@ from src.classes.wire import Wire
 from src.classes.occupancy import Occupancy
 from src.algorithms.utils import cost_function, Coords_3D, manhattan_distance
 from functools import lru_cache
+import itertools
 
 def add_missing_extension(filename: str, extension: str):
     """Add an extension to a filename if the extension is missing"""
@@ -232,14 +233,18 @@ class Chip:
         Checks if a wire is in collision with another wire
         (2 wires occupying the same wire segment)
         """
-        # sorting so that coordinate order of segment is consistent
+        # condition so that coordinate order of segment is consistent
         wire1_segments_set: set[tuple[Coords_3D, Coords_3D]] = {
-            tuple(sorted((wire1.coords_wire_segments[i], wire1.coords_wire_segments[i + 1])))
+            (wire1.coords_wire_segments[i], wire1.coords_wire_segments[i + 1])
+            if wire1.coords_wire_segments[i] < wire1.coords_wire_segments[i + 1]
+            else (wire1.coords_wire_segments[i + 1], wire1.coords_wire_segments[i])
             for i in range(wire1.length - 1)
         }
 
         wire2_segments_set: set[tuple[Coords_3D, Coords_3D]] = {
-            tuple(sorted((wire2.coords_wire_segments[i], wire2.coords_wire_segments[i + 1])))
+            (wire2.coords_wire_segments[i], wire2.coords_wire_segments[i + 1])
+            if wire2.coords_wire_segments[i] < wire2.coords_wire_segments[i + 1]
+            else (wire2.coords_wire_segments[i + 1], wire2.coords_wire_segments[i])
             for i in range(wire2.length - 1)
         }
         
@@ -272,14 +277,12 @@ class Chip:
     def get_grid_wire_collision(self, boolean_output=True) -> int|bool:
         """Checks if a grid has a collision between any wires"""
         collision_counter = 0
+        # only check intersecting wires
+        intersection_coords = self.get_intersection_coords() # gate coords excluded
+        all_intersecting_wires = [tuple(self.get_coord_occupancy(coord)) for coord in intersection_coords]
 
-        for i in range(len(self.wires)):
-            for j in range(i):
-                wire1 = self.wires[i]
-                wire2 = self.wires[j]
-                if i == j:
-                    continue
-
+        for wires in all_intersecting_wires:
+            for wire1, wire2 in itertools.combinations(wires, r=2):
                 if self.wires_in_collision(wire1, wire2):
                     if boolean_output:
                         return True

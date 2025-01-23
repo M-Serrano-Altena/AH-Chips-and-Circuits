@@ -3,8 +3,8 @@ from src.classes.chip import Chip
 from src.algorithms import IRRA
 from sys import argv
 
-chip_id = 1
-net_id = 4
+chip_id = 2
+net_id = 8
 
 if len(argv) >= 2:
     chip_id = argv[1]
@@ -17,7 +17,7 @@ base_data_path = r"data/"
 chip0 = Chip(base_data_path, chip_id=chip_id, net_id=net_id, output_folder="output", padding=1)
 
 # 2) we use the algo with offset
-irra_irra = IRRA.IRRA_A_star(chip= chip0, iterations=10, intersection_limit=2, acceptable_intersection=5)
+irra_irra = IRRA.IRRA_A_star(chip= chip0, iterations=50, intersection_limit=0, acceptable_intersection=2)
 best_chip = irra_irra.run()
 
 # 3) we check the final costs
@@ -25,5 +25,9 @@ print("Total wire cost:", best_chip.calc_total_grid_cost())
 print(f"Intersections are at: {best_chip.get_intersection_coords()}")
 
 # 4) show and save the grid
-best_chip.show_grid("final_layout.html", "IRRA")
-best_chip.save_output("final_output.csv")
+base_save_name = f"chip_{chip_id}_net_{net_id}"
+plot_save_name = "layout_" + base_save_name
+csv_save_name = "output_" + base_save_name
+
+best_chip.show_grid(plot_save_name, "IRRA_A*")
+best_chip.save_output(csv_save_name)

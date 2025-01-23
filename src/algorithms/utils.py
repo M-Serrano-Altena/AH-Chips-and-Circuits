@@ -20,4 +20,4 @@ def cost_function(wire_length: int, intersect_amount: int, collision_amount: int
 
 def manhattan_distance(coord1: Coords_3D, coord2: Coords_3D):
     """Calculates the Manhattan distance between two coordinates"""
-    return sum(abs(coord1[i] - coord2[i]) for i in range(len(coord1)))
+    return abs(coord1[0] - coord2[0]) + abs(coord1[1] - coord2[1]) + abs(coord1[2] - coord2[2])
