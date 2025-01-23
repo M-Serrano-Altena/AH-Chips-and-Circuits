@@ -45,6 +45,7 @@ class IRRA(Pseudo_random):
         self.best_cost = inf   # inf, such that current_cost < best_cost
         self.best_chip: Chip|None = None
         self.chip_og = copy.deepcopy(chip)
+        self.all_costs = [] # we use all_costs to save cost for parameter research
 
     def run(self) -> Chip:
         """
@@ -92,6 +93,9 @@ class IRRA(Pseudo_random):
             current_cost = self.chip.calc_total_grid_cost()
             current_intersections = self.chip.get_wire_intersect_amount()
             print(f"[IRRA] After rerouting: cost={current_cost}, intersections={current_intersections}")
+
+            # save current cost to all cost list for parameter research
+            self.all_costs.append(current_cost) 
 
             if current_cost < self.best_cost:
                 self.best_cost = current_cost
@@ -163,7 +167,7 @@ class IRRA(Pseudo_random):
 
                 # we cool down the temperature
                 if self.simulated_annealing:
-                    temperature = self.exponential_cooling(temperature, self.temperature_alpha, temperature_iterations)
+                    temperature = self.exponential_cooling(self.start_temperature, self.temperature_alpha, temperature_iterations)
             
 
             # if no single-wire reroute improved things => stop
@@ -346,16 +350,6 @@ class IRRA(Pseudo_random):
     def exponential_cooling(start_temperature: int, alpha: int, iterations: int) -> int:
 
         return start_temperature * (alpha ** iterations)
-    
-    @staticmethod
-    def logarithmic_cooling(start_temperature: int, iterations: int) -> int:
-
-        return start_temperature / math.log(1 + iterations)
-
-    @staticmethod 
-    def linear_cooling(start_temperature: int, alpha: int, iterations: int) -> int:
-
-        return start_temperature - (alpha * iterations)
 
 
 
