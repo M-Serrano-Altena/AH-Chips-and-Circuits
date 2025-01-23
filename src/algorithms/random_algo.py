@@ -55,11 +55,6 @@ class Pseudo_random(Greed_random):
 
             # we let this loop until all wires have been tried for random offsets
 
-        # if not all wires were connected with random offsets
-        # fallback to the greed approach to find solution
-        if not self.chip.is_fully_connected():
-            super().run()
-
     @staticmethod
     def bfs_route_exact_length(chip: Chip, start: Coords_3D, end: Coords_3D, exact_length: int) -> list[Coords_3D]|None:
         """
