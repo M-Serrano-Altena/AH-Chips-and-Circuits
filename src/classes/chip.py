@@ -6,17 +6,9 @@ import pandas as pd
 import os
 from src.classes.wire import Wire
 from src.classes.occupancy import Occupancy
-from src.algorithms.utils import cost_function, Coords_3D, manhattan_distance
+from src.algorithms.utils import cost_function, Coords_3D, manhattan_distance, add_missing_extension
 from functools import lru_cache
 import itertools
-
-def add_missing_extension(filename: str, extension: str):
-    """Add an extension to a filename if the extension is missing"""
-    base, existing_extension = os.path.splitext(filename)
-    if not existing_extension:
-        filename = filename + extension
-
-    return filename
 
 def convert_to_matrix_coords(coords, matrix_y_size):
     """
