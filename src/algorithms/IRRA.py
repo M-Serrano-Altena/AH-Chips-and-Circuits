@@ -443,8 +443,9 @@ class IRRA_A_star(A_star, IRRA):
         shortcircuit-free path for it. Returns True if rerouting improved the situation,
         else False (and reverts).
         """
-        # we create a copies of the old state
+        # we create a copie of the old state
         old_coords = wire.coords_wire_segments[:]
+        old_intersection_amount = self.chip.get_wire_intersect_amount()
         old_cost = self.chip.calc_total_grid_cost()
 
         # 1) remove old segments from occupancy (except gates)
@@ -464,12 +465,19 @@ class IRRA_A_star(A_star, IRRA):
             # if successful, add new path
             wire.append_wire_segment_list(new_path)
             self.chip.add_wire_segment_list_to_occupancy(new_path, wire)
-            new_cost = self.chip.calc_total_grid_cost()
+            new_intersection_amount = self.chip.get_wire_intersect_amount()
             
             # if we lowered cost, keep it
-            if new_cost < old_cost:
-                print(f"Reduced the cost to: {new_cost}")
+            if new_intersection_amount < old_intersection_amount:
+                print(f"Reduced the intersections to: {new_intersection_amount}")
                 return True
+            
+            elif new_intersection_amount == old_intersection_amount:
+                new_cost = self.chip.calc_total_grid_cost()
+
+                if new_cost < self.best_cost:
+                    self.best_cost = new_cost
+                    return True
 
         # 3) if no improvement, return to old state and return False
         self.restore_wire(wire, old_coords)
