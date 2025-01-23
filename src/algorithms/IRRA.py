@@ -22,7 +22,7 @@ class IRRA(Pseudo_random):
     Optional: put a limit on the initial intersection amount (l * GATE) checking only random configurations with a low intersection amount
     """
 
-    def __init__(self, chip: "Chip", iterations: int = 100, intersection_limit: int = 0, acceptable_intersection: int = 2, early_stopping_patience: int=5, max_offset: int = 10, allow_short_circuit: bool = False, sort_wires: bool = False, simulated_annealing: bool = False, start_temperature: int = 500, temperature_alpha: int = 0.9, random_seed: int|None = None):
+    def __init__(self, chip: "Chip", iterations: int = 100, intersection_limit: int = 0, acceptable_intersection: int = 2, early_stopping_patience: int=5, max_offset: int = 10, allow_short_circuit: bool = False, sort_wires: bool = False, A_star_rerouting: bool=False, simulated_annealing: bool = False, start_temperature: int = 500, temperature_alpha: int = 0.9, random_seed: int|None = None):
 
         super().__init__(
             chip=chip,
@@ -36,15 +36,27 @@ class IRRA(Pseudo_random):
         self.acceptable_intersection = acceptable_intersection
         self.early_stopping_patience = early_stopping_patience
         self.gate_amount = len(self.chip.gates)
+        self.A_star_rerouting = A_star_rerouting
         self.simulated_annealing = simulated_annealing
         self.temperature_alpha = temperature_alpha
         self.start_temperature = start_temperature
+
+        if self.A_star_rerouting:
+            self.a_star = A_star(
+                chip=chip,
+                max_offset=max_offset,
+                allow_short_circuit=allow_short_circuit,
+                sort_wires=sort_wires,
+            )
 
 
         # we use these variables to keep track of the best solution
         self.best_cost = inf   # inf, such that current_cost < best_cost
         self.best_chip: Chip|None = None
         self.chip_og = copy.deepcopy(chip)
+
+        if self.A_star_rerouting and self.simulated_annealing:
+            raise ValueError("A* rerouting is not compatible with simulated Annealing")
 
     def run(self) -> Chip:
         """
@@ -56,8 +68,10 @@ class IRRA(Pseudo_random):
            d) If intersection limit is reached, we stop early.
         2) Restore the best configuration found to the chip.
         """
+        algo_name_input = "[IRRA input]"
+        algo_name_routing = "[IRRA A* routing]" if self.A_star_rerouting else "[IRRA annealing routing]" if self.simulated_annealing else "[IRRA BFS routing]"
         for new_solution_iteration in range(1, self.iterations + 1):
-            print(f"[IRRA] Starting iteration {new_solution_iteration}/{self.iterations}:")
+            print(f"{algo_name_input} Starting iteration {new_solution_iteration}/{self.iterations}:")
             improvement_iteration = 0
             optimal_solution_counter = 0 # count the amount of times we encounter the same cost in a row
 
@@ -72,25 +86,32 @@ class IRRA(Pseudo_random):
             while (not self.chip.is_fully_connected() or self.chip.get_wire_intersect_amount() >= (self.acceptable_intersection * self.gate_amount)):
                 self.reset_chip()
                 super().run()
-                print(f"Finding configuration: {improvement_iteration}, intersections: {self.chip.get_wire_intersect_amount()}")
+                print(f"{algo_name_input} Finding configuration: {improvement_iteration}, intersections: {self.chip.get_wire_intersect_amount()}")
                 improvement_iteration += 1
 
             # 3) try to reroute (reduce intersections) in a loop
-            print(f"Started rerouting...")
-            self.intersections_rerouting()
+            print(f"{algo_name_routing} Started rerouting...")
+            if self.A_star_rerouting:
+                self.intersections_rerouting_A_star()
+            else:
+                self.intersections_rerouting()
 
             # 4) quick optimization of the route found
             print(f"Optimizing costs...")
             print(f"Current cost: {self.chip.calc_total_grid_cost()}")
             
-            self.greed_optimize()
+            if self.A_star_rerouting:
+                self.A_star_optimize()
+            else:
+                self.greed_optimize()
+            
 
             print(f"Costs after optimization: {self.chip.calc_total_grid_cost()}")
 
             # 5) check if we beat the best cost or reached the intersection limit
             current_cost = self.chip.calc_total_grid_cost()
             current_intersections = self.chip.get_wire_intersect_amount()
-            print(f"[IRRA] After rerouting: cost={current_cost}, intersections={current_intersections}")
+            print(f"{algo_name_routing} After rerouting: cost={current_cost}, intersections={current_intersections}")
 
             if current_cost < self.best_cost:
                 self.best_cost = current_cost
@@ -103,10 +124,10 @@ class IRRA(Pseudo_random):
 
             # if at or below intersection_limit and above early_stopping_patience, we can stop early
             if current_intersections <= self.intersection_limit and optimal_solution_counter > self.early_stopping_patience:
-                print("[IRRA] Intersection limit reached or better. Stopping early.")
+                print(f"{algo_name_routing} Intersection limit reached or better. Stopping early.")
                 break
 
-        print(f"[IRRA] Done. Best cost={self.best_cost}, Intersections={self.best_chip.get_wire_intersect_amount()}")
+        print(f"{algo_name_routing} Done. Best cost={self.best_cost}, Intersections={self.best_chip.get_wire_intersect_amount()}")
         return self.best_chip
 
     def reset_chip(self) -> None:
@@ -162,6 +183,45 @@ class IRRA(Pseudo_random):
             
             # we cool down the temperature
             temperature = self.exponential_cooling(temperature, self.temperature_alpha, temperature_iterations)
+
+            # if no single-wire reroute improved things => stop
+            if not improved:
+                return
+            
+    def intersections_rerouting_A_star(self) -> None:
+        """
+        Tries to remove intersections by rerouting intersecting wires one-by-one.
+        Continues until no more improvements are made or no intersections remain.
+        """
+        while True:
+            intersection_count = self.chip.get_wire_intersect_amount()
+            if intersection_count == 0:
+                # no intersections, thus fully fixed
+                return
+
+            improved = False
+
+            # identify all intersection coordinates
+            intersection_coords = self.chip.get_intersection_coords()
+            if not intersection_coords:
+                return
+
+            for coord in intersection_coords:
+                # we find all wires passing through this intersection coordinate
+                occupation_set = self.chip.get_coord_occupancy(coord, exclude_gates=True)
+                
+                # if no short circuit we continue
+                if len(occupation_set) < 2:
+                    continue
+
+                # choose wire causing short circuit at random
+                wire_to_fix = random.choice(tuple(occupation_set))
+
+                # attempt reroute
+                if self.reroute_wire_A_star(wire_to_fix):
+                    improved = True
+                    # if improved, break out to recalculate intersections
+                    break
 
             # if no single-wire reroute improved things => stop
             if not improved:
@@ -233,6 +293,52 @@ class IRRA(Pseudo_random):
             return True
 
         # 3) if BFS failed or no improvement, return to old state and return False
+        self.restore_wire(wire, old_coords)
+        return False
+
+    def reroute_wire_A_star(self, wire: 'Wire') -> bool:
+        """
+        Removes a wire from the occupancy grid and tries to find a new
+        shortcircuit-free path for it. Returns True if rerouting improved the situation,
+        else False (and reverts).
+        """
+        # we create a copie of the old state
+        old_coords = wire.coords_wire_segments[:]
+        old_intersection_amount = self.chip.get_wire_intersect_amount()
+        old_cost = self.chip.calc_total_grid_cost()
+
+        # 1) remove old segments from occupancy (except gates)
+        for c in old_coords:
+            # remove all wire from occupancy coords except in gate coords
+            if c not in wire.gates: 
+                self.chip.occupancy.remove_from_occupancy(c, wire)
+
+        start = wire.gates[0]
+        end = wire.gates[1]
+
+        # 2) try to use A* to reroute the wire
+        wire.coords_wire_segments = [start, end]
+        new_path = self.a_star.shortest_cable(self.chip, start, end, allow_short_circuit=True)
+
+        if new_path:
+            # if successful, add new path
+            wire.append_wire_segment_list(new_path)
+            self.chip.add_wire_segment_list_to_occupancy(new_path, wire)
+            new_intersection_amount = self.chip.get_wire_intersect_amount()
+            is_fully_connected = self.chip.is_fully_connected()
+            
+            # if we lowered cost, keep it
+            if new_intersection_amount < old_intersection_amount and is_fully_connected:
+                print(f"Reduced the intersections to: {new_intersection_amount}")
+                return True
+            
+            elif new_intersection_amount == old_intersection_amount and is_fully_connected:
+                new_cost = self.chip.calc_total_grid_cost()
+                if new_cost < old_cost:
+                    print(f"Reduced the costs to: {new_cost}")
+                    return True
+
+        # 3) if no improvement, return to old state and return False
         self.restore_wire(wire, old_coords)
         return False
     
@@ -327,6 +433,58 @@ class IRRA(Pseudo_random):
                     if coord not in wire.gates:
                         self.chip.add_wire_segment_to_occupancy(coord, wire)
 
+    def A_star_optimize(self) -> None:
+        """
+        After the grid is fully connected and intersections are minimized,
+        do an A* search for each wire to reduce total wire length/cost.
+
+        For each wire:
+        1) Temporarily remove it from occupancy.
+        2) Calculate the route again using A* (prioritizing short paths).
+        3) Compare new total cost (or intersections) vs. old. Keep if better.
+            Otherwise revert to the old route.
+        """
+        iteration = 0
+        while True:
+            iteration += 1
+            best_cost = inf
+            previous_best_cost = inf
+            random.shuffle(self.chip.wires)
+            for wire in self.chip.wires:
+                # snapshot old wire state
+                old_coords = wire.coords_wire_segments[:]
+                old_cost = self.chip.calc_total_grid_cost()
+                new_cost = old_cost
+
+                # 1) remove old wire from chip
+                self.chip.reset_wire(wire)
+
+                # 2) attempt A* for a new, hopefully shorter route.
+                start, end = wire.gates[0], wire.gates[-1]
+                new_path = self.a_star.shortest_cable(self.chip, start, end, allow_short_circuit=True)
+
+                # If A* yields a path, see whether it improves the total cost
+                if new_path:
+                    wire.append_wire_segment_list(new_path)
+                    self.chip.add_wire_segment_list_to_occupancy(new_path, wire)
+                    new_cost = self.chip.calc_total_grid_cost()
+
+                # 3) if no improvement, revert
+                if new_cost >= old_cost or not self.chip.is_fully_connected():
+                    self.chip.reset_wire(wire)
+                    wire.append_wire_segment_list(old_coords)
+                    self.chip.add_wire_segment_list_to_occupancy(old_coords, wire)
+
+                else:
+                    best_cost = new_cost
+                    print(f"{iteration}: Route optimized: new cost = {new_cost}")
+
+
+            if best_cost == previous_best_cost:
+                return
+            
+            previous_best_cost = best_cost
+
     @staticmethod
     def acceptance_probability(new_cost: int, old_cost: int, temperature: int) -> int:
         
@@ -378,8 +536,10 @@ class IRRA_A_star(A_star, IRRA):
         2) Restore the best configuration found to the chip.
         """
         self.shuffle_wires = True
+        algo_name_input = "[IRRA A* input]"
+        algo_name_routing = "[IRRA A* routing]" if self.A_star_rerouting else "[IRRA annealing routing]" if self.simulated_annealing else "[IRRA BFS routing]"
         for new_solution_iteration in range(1, self.iterations + 1):
-            print(f"[IRRA A*] Starting iteration {new_solution_iteration}/{self.iterations}:")
+            print(f"{algo_name_input} Starting iteration {new_solution_iteration}/{self.iterations}:")
             improvement_iteration = 0
             optimal_solution_counter = 0 # count the amount of times we encounter the same cost in a row
 
@@ -391,28 +551,34 @@ class IRRA_A_star(A_star, IRRA):
 
             # repeat this step until we find a configuration that is fully connected 
             # optional) repeat this step until we have wiring that has acceptable intersection amount 
-            while (self.chip.get_wire_intersect_amount() >= (self.acceptable_intersection * self.gate_amount)):
+            while (self.chip.get_wire_intersect_amount() >= (self.acceptable_intersection * self.gate_amount)) or not self.chip.is_fully_connected:
                 self.reset_chip()
                 super().run()
                 print(f"Finding configuration: {improvement_iteration}, intersections: {self.chip.get_wire_intersect_amount()}")
                 improvement_iteration += 1
 
             # 3) try to reroute (reduce intersections) in a loop
-            print(f"Started rerouting...")
-            self.intersections_rerouting()
+            print(f"{algo_name_routing} Started rerouting...")
+            if self.A_star_rerouting:
+                self.intersections_rerouting_A_star()
+            else:
+                self.intersections_rerouting()
 
             # 4) quick optimization of the route found
             print(f"Optimizing found route...")
             print(f"Current cost: {self.chip.calc_total_grid_cost()}")
             
-            self.A_star_optimize(iterations=5)
+            if self.A_star_rerouting:
+                self.A_star_optimize()
+            else:
+                self.greed_optimize()
 
             print(f"Costs after optimization: {self.chip.calc_total_grid_cost()}")
 
             # 5) check if we beat the best cost or reached the intersection limit
             current_cost = self.chip.calc_total_grid_cost()
             current_intersections = self.chip.get_wire_intersect_amount()
-            print(f"[IRRA A*] After rerouting: cost={current_cost}, intersections={current_intersections}")
+            print(f"{algo_name_routing} After rerouting: cost={current_cost}, intersections={current_intersections}")
 
             if current_cost < self.best_cost:
                 self.best_cost = current_cost
@@ -425,95 +591,8 @@ class IRRA_A_star(A_star, IRRA):
 
             # if at or below intersection_limit and above early_stopping_patience, we can stop early
             if current_intersections <= self.intersection_limit and optimal_solution_counter > self.early_stopping_patience:
-                print("[IRRA A*] Intersection limit reached or better. Stopping early.")
+                print(f"{algo_name_routing} Intersection limit reached or better. Stopping early.")
                 break
 
-        print(f"[IRRA A*] Done. Best cost={self.best_cost}, Intersections={self.best_chip.get_wire_intersect_amount()}")
+        print(f"{algo_name_routing} Done. Best cost={self.best_cost}, Intersections={self.best_chip.get_wire_intersect_amount()}")
         return self.best_chip
-    
-    def reroute_wire(self, wire: 'Wire') -> bool:
-        """
-        Removes a wire from the occupancy grid and tries to find a new
-        shortcircuit-free path for it. Returns True if rerouting improved the situation,
-        else False (and reverts).
-        """
-        # we create a copie of the old state
-        old_coords = wire.coords_wire_segments[:]
-        old_intersection_amount = self.chip.get_wire_intersect_amount()
-        old_cost = self.chip.calc_total_grid_cost()
-
-        # 1) remove old segments from occupancy (except gates)
-        for c in old_coords:
-            # remove all wire from occupancy coords except in gate coords
-            if c not in wire.gates: 
-                self.chip.occupancy.remove_from_occupancy(c, wire)
-
-        start = wire.gates[0]
-        end = wire.gates[1]
-
-        # 2) try to use A* to reroute the wire
-        wire.coords_wire_segments = [start, end]
-        new_path = self.shortest_cable(self.chip, start, end, allow_short_circuit=True)
-
-        if new_path:
-            # if successful, add new path
-            wire.append_wire_segment_list(new_path)
-            self.chip.add_wire_segment_list_to_occupancy(new_path, wire)
-            new_intersection_amount = self.chip.get_wire_intersect_amount()
-            
-            # if we lowered cost, keep it
-            if new_intersection_amount < old_intersection_amount:
-                print(f"Reduced the intersections to: {new_intersection_amount}")
-                return True
-            
-            elif new_intersection_amount == old_intersection_amount:
-                new_cost = self.chip.calc_total_grid_cost()
-
-                if new_cost < self.best_cost:
-                    self.best_cost = new_cost
-                    return True
-
-        # 3) if no improvement, return to old state and return False
-        self.restore_wire(wire, old_coords)
-        return False
-    
-    def A_star_optimize(self, iterations: int=1) -> None:
-        """
-        After the grid is fully connected and intersections are minimized,
-        do an A* search for each wire to reduce total wire length/cost.
-
-        For each wire:
-        1) Temporarily remove it from occupancy.
-        2) Calculate the route again using A* (prioritizing short paths).
-        3) Compare new total cost (or intersections) vs. old. Keep if better.
-            Otherwise revert to the old route.
-        """
-        for i in range(iterations):
-            # sample returns shuffled list (while random.shuffle returns None)
-            for wire in random.sample(self.chip.wires, len(self.chip.wires)):
-                # snapshot old wire state
-                old_coords = wire.coords_wire_segments[:]
-                old_cost = self.chip.calc_total_grid_cost()
-                new_cost = old_cost
-
-                # 1) remove old wire from chip
-                self.chip.reset_wire(wire)
-
-                # 2) attempt A* for a new, hopefully shorter route.
-                start, end = wire.gates[0], wire.gates[-1]
-                new_path = self.shortest_cable(self.chip, start, end, allow_short_circuit=True)
-
-                # If A* yields a path, see whether it improves the total cost
-                if new_path:
-                    wire.append_wire_segment_list(new_path)
-                    self.chip.add_wire_segment_list_to_occupancy(new_path, wire)
-                    new_cost = self.chip.calc_total_grid_cost()
-
-                # 3) if no improvement, revert
-                if new_cost >= old_cost:
-                    self.chip.reset_wire(wire)
-                    wire.append_wire_segment_list(old_coords)
-                    self.chip.add_wire_segment_list_to_occupancy(old_coords, wire)
-
-                else:
-                    print(f"{i}: Route optimized: new cost = {new_cost}")
