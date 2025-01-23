@@ -203,18 +203,13 @@ class IRRA(Pseudo_random):
         self.restore_wire(wire, old_coords)
         return False
 
-    def restore_wire(self, wire: 'Wire', coords: list[Coords_3D]) -> None:
+    def restore_wire(self, wire: 'Wire', old_coords: list[Coords_3D]) -> None:
         """
         Restores a wire to given coords in occupancy.
         """
-        start = wire.gates[0]
-        end = wire.gates[1]
-
-        wire.coords_wire_segments = [start, end]
-        for c in coords:
-            if c not in wire.gates:
-                self.chip.add_wire_segment_to_occupancy(c, wire)
-            wire.append_wire_segment(c)
+        self.chip.reset_wire(wire)
+        wire.append_wire_segment_list(old_coords)
+        self.chip.add_wire_segment_list_to_occupancy(old_coords, wire)
 
     def restore_best_solution(self) -> None:
         """
@@ -320,7 +315,7 @@ class IRRA_A_star(A_star, IRRA):
             optimal_solution_counter = 0 # count the amount of times we encounter the same cost in a row
 
             # 1) clear occupancy and reset wire paths
-            self.reset_chip()
+            self.chip.reset_all_wires()
 
             # 2) let parent produce a random wiring
             super().run()

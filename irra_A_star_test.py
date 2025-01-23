@@ -17,7 +17,7 @@ base_data_path = r"data/"
 chip0 = Chip(base_data_path, chip_id=chip_id, net_id=net_id, output_folder="output", padding=1)
 
 # 2) we use the algo with offset
-irra_irra = IRRA.IRRA_A_star(chip= chip0, iterations=1000, intersection_limit=2, acceptable_intersection=0.5)
+irra_irra = IRRA.IRRA_A_star(chip= chip0, iterations=10, intersection_limit=2, acceptable_intersection=5)
 best_chip = irra_irra.run()
 
 # 3) we check the final costs
