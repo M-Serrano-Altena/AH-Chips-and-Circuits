@@ -2,7 +2,7 @@ from src.classes.chip import Chip
 from src.algorithms.utils import *
 from src.algorithms.random_algo import Pseudo_random
 from src.algorithms.A_star import A_star
-from collections import deque
+import math
 import random
 import copy
 from math import inf
@@ -22,7 +22,7 @@ class IRRA(Pseudo_random):
     Optional: put a limit on the initial intersection amount (l * GATE) checking only random configurations with a low intersection amount
     """
 
-    def __init__(self, chip: "Chip", iterations: int = 100, intersection_limit: int = 0, acceptable_intersection: int = 2, early_stopping_patience: int=5, max_offset: int = 10, allow_short_circuit: bool = False, sort_wires: bool = False, random_seed: int|None = None):
+    def __init__(self, chip: "Chip", iterations: int = 100, intersection_limit: int = 0, acceptable_intersection: int = 2, early_stopping_patience: int=5, max_offset: int = 10, allow_short_circuit: bool = False, sort_wires: bool = False, simulated_annealing: bool = False, start_temperature: int = 500, temperature_alpha: int = 0.9, random_seed: int|None = None):
 
         super().__init__(
             chip=chip,
@@ -36,6 +36,9 @@ class IRRA(Pseudo_random):
         self.acceptable_intersection = acceptable_intersection
         self.early_stopping_patience = early_stopping_patience
         self.gate_amount = len(self.chip.gates)
+        self.simulated_annealing = simulated_annealing
+        self.temperature_alpha = temperature_alpha
+        self.start_temperature = start_temperature
 
 
         # we use these variables to keep track of the best solution
@@ -80,7 +83,7 @@ class IRRA(Pseudo_random):
             print(f"Optimizing costs...")
             print(f"Current cost: {self.chip.calc_total_grid_cost()}")
             
-            #self.greed_optimize()
+            self.greed_optimize()
 
             print(f"Costs after optimization: {self.chip.calc_total_grid_cost()}")
 
@@ -118,11 +121,20 @@ class IRRA(Pseudo_random):
         Tries to remove intersections by rerouting intersecting wires one-by-one.
         Continues until no more improvements are made or no intersections remain.
         """
+
+        temperature_iterations = 0
+        temperature = self.start_temperature
+
         while True:
+
+            temperature_iterations += 1
+
             intersection_count = self.chip.get_wire_intersect_amount()
             if intersection_count == 0:
                 # no intersections, thus fully fixed
                 return
+            
+            print(f"We reduced the intersections to: {intersection_count} with {self.chip.calc_total_grid_cost()}")
 
             improved = False
 
@@ -143,65 +155,95 @@ class IRRA(Pseudo_random):
                 wire_to_fix = random.choice(tuple(occupation_set))
 
                 # attempt reroute
-                if self.reroute_wire(wire_to_fix):
+                if self.reroute_wire(wire_to_fix, temperature):
                     improved = True
                     # if improved, break out to recalculate intersections
                     break
+            
+            # we cool down the temperature
+            temperature = self.exponential_cooling(temperature, self.temperature_alpha, temperature_iterations)
 
             # if no single-wire reroute improved things => stop
             if not improved:
                 return
 
-    def reroute_wire(self, wire: 'Wire') -> bool:
+    def reroute_wire(self, wire: 'Wire', temperature: int) -> bool:
         """
         Removes a wire from the occupancy grid and tries to find a new
         shortcircuit-free path for it. Returns True if rerouting improved the situation,
         else False (and reverts).
         """
+        new_path = None
+
         # we create a copies of the old state
         old_coords = wire.coords_wire_segments[:]
         old_cost = self.chip.calc_total_grid_cost()
-        old_intersection_amount = self.chip.get_wire_intersect_amount()
 
         # 1) remove old segments from occupancy (except gates)
-        for c in old_coords:
-            # remove all wire from occupancy coords except in gate coords
-            if c not in wire.gates: 
-                self.chip.occupancy.remove_from_occupancy(c, wire)
+        self.chip.remove_wire_from_occupancy(wire)
 
         # 2) try to BFS-route again with offset=10 avoiding collisions
         # TODO: this offset is currently arbitrary, try finding an optimal one
+
+        # reset wire_coords just in case
         wire.coords_wire_segments = [wire.gates[0], wire.gates[1]]
-        new_path = self.bfs_route(
-            chip=self.chip,
-            start=wire.gates[0],
-            end=wire.gates[1],
-            offset=10,
-            allow_short_circuit=False
-        )
 
+        # if simulated annealing we first try to find suboptimal route 
+        if self.simulated_annealing and temperature > 0:
+
+            # we allow short circuit
+            new_path = self.bfs_route(
+                chip=self.chip,
+                start=wire.gates[0],
+                end=wire.gates[1],
+                offset=10,
+                allow_short_circuit=True
+            )
+
+            if new_path:
+
+                self.add_new_path(wire, new_path)
+                new_cost = self.chip.calc_total_grid_cost()
+
+                # if acceptance function refuses new path we set path to none and continue
+                if (random.random() < self.acceptance_probability(new_cost, old_cost, temperature)):
+                    return True
+                
+                else:
+                    # we remove the wire from occupancy, and reset the coords
+                    self.chip.remove_wire_from_occupancy(wire)
+                    wire.coords_wire_segments = [wire.gates[0], wire.gates[1]]
+                    new_path = None
+
+
+        # if simulated annealing refused suboptimal path, or if no simulated annealing, try to find new optimal path through bfs
+        if new_path is None:
+            new_path = self.bfs_route(
+                chip=self.chip,
+                start=wire.gates[0],
+                end=wire.gates[1],
+                offset=10,
+                allow_short_circuit=False
+            )
+
+        # if we have found a new path, we add it to the chip
         if new_path:
+            self.add_new_path(wire, new_path)
 
-            # if successful, add new path
+            return True
 
+        # 3) if BFS failed or no improvement, return to old state and return False
+        self.restore_wire(wire, old_coords)
+        return False
+    
+    def add_new_path(self, wire, new_path) -> None:
+            
             start = wire.gates[0]
             end = wire.gates[1]
             wire.coords_wire_segments = [start] + new_path + [end]
 
             for c in new_path:
                 self.chip.add_wire_segment_to_occupancy(c, wire)
-
-            # check whether intersection count improved
-            new_intersections = self.chip.get_wire_intersect_amount()
-            new_cost = self.chip.calc_total_grid_cost()
-            # if we actually lowered intersection count or cost, keep it
-            if new_intersections < old_intersection_amount or new_cost < old_cost:
-                print(f"Reduced the intersections to: {new_intersections}")
-                return True
-
-        # 3) if BFS failed or no improvement, return to old state and return False
-        self.restore_wire(wire, old_coords)
-        return False
 
     def restore_wire(self, wire: 'Wire', coords: list[Coords_3D]) -> None:
         """
@@ -290,6 +332,33 @@ class IRRA(Pseudo_random):
                     if coord not in wire.gates:
                         self.chip.add_wire_segment_to_occupancy(coord, wire)
 
+    @staticmethod
+    def acceptance_probability(new_cost: int, old_cost: int, temperature: int) -> int:
+        
+        if new_cost < old_cost:
+            return 1
+        
+        if new_cost >= old_cost:
+            return pow(2,  (old_cost - new_cost)/temperature)
+
+    @staticmethod    
+    def exponential_cooling(start_temperature: int, alpha: int, iterations: int) -> int:
+
+        return start_temperature * (alpha ** iterations)
+    
+    @staticmethod
+    def logarithmic_cooling(start_temperature: int, iterations: int) -> int:
+
+        return start_temperature / math.log(1 + iterations)
+
+    @staticmethod 
+    def linear_cooling(start_temperature: int, alpha: int, iterations: int) -> int:
+
+        return start_temperature - (alpha * iterations)
+
+
+
+
 
 
 
@@ -327,7 +396,7 @@ class IRRA_A_star(A_star, IRRA):
 
             # repeat this step until we find a configuration that is fully connected 
             # optional) repeat this step until we have wiring that has acceptable intersection amount 
-            while (not self.chip.is_fully_connected() or self.chip.get_wire_intersect_amount() >= (self.acceptable_intersection * self.gate_amount)):
+            while (self.chip.get_wire_intersect_amount() >= (self.acceptable_intersection * self.gate_amount)):
                 self.reset_chip()
                 super().run()
                 print(f"Finding configuration: {improvement_iteration}, intersections: {self.chip.get_wire_intersect_amount()}")
