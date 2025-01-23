@@ -86,6 +86,7 @@ class IRRA(Pseudo_random):
             self.greed_optimize()
 
             print(f"Costs after optimization: {self.chip.calc_total_grid_cost()}")
+        
 
             # 5) check if we beat the best cost or reached the intersection limit
             current_cost = self.chip.calc_total_grid_cost()
@@ -127,8 +128,6 @@ class IRRA(Pseudo_random):
 
         while True:
 
-            temperature_iterations += 1
-
             intersection_count = self.chip.get_wire_intersect_amount()
             if intersection_count == 0:
                 # no intersections, thus fully fixed
@@ -144,6 +143,8 @@ class IRRA(Pseudo_random):
                 return
 
             for coord in intersection_coords:
+                temperature_iterations += 1
+
                 # we find all wires passing through this intersection coordinate
                 occupation_set = self.chip.get_coord_occupancy(coord, exclude_gates=True)
                 
@@ -159,12 +160,15 @@ class IRRA(Pseudo_random):
                     improved = True
                     # if improved, break out to recalculate intersections
                     break
+
+                # we cool down the temperature
+                if self.simulated_annealing:
+                    temperature = self.exponential_cooling(temperature, self.temperature_alpha, temperature_iterations)
             
-            # we cool down the temperature
-            temperature = self.exponential_cooling(temperature, self.temperature_alpha, temperature_iterations)
 
             # if no single-wire reroute improved things => stop
             if not improved:
+                print(f"End temperature: {temperature}")
                 return
 
     def reroute_wire(self, wire: 'Wire', temperature: int) -> bool:
@@ -206,7 +210,10 @@ class IRRA(Pseudo_random):
                 new_cost = self.chip.calc_total_grid_cost()
 
                 # if acceptance function refuses new path we set path to none and continue
-                if (random.random() < self.acceptance_probability(new_cost, old_cost, temperature)):
+                if (random.random() < self.acceptance_probability(new_cost, old_cost, temperature)) and new_cost != old_cost:
+                    # print(f"We have a temperature of {temperature} and a accepetanceprob of: {self.acceptance_probability(new_cost, old_cost, temperature)}")
+                    if new_cost > old_cost:
+                        print(f"Our old costs are: {old_cost} and our new costs are {new_cost}")
                     return True
                 
                 else:
@@ -229,7 +236,6 @@ class IRRA(Pseudo_random):
         # if we have found a new path, we add it to the chip
         if new_path:
             self.add_new_path(wire, new_path)
-
             return True
 
         # 3) if BFS failed or no improvement, return to old state and return False
