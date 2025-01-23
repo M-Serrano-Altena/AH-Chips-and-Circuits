@@ -101,7 +101,7 @@ class A_star(Greed):
                 if self.print_log_messages:
                     print(f"Found shortest route for wire = {wire.gates}")
                 # we have found a viable path and insert the coords in the wire and set occupancy
-                self.chip.add_wire_to_occupancy(path, wire)
+                self.chip.add_wire_segment_list_to_occupancy(path, wire)
                 wire.append_wire_segment_list(path)
 
         if not self.print_log_messages:
@@ -117,7 +117,7 @@ class A_star(Greed):
 
     def shortest_cable(self, 
         chip: 'Chip', start_coords: Coords_3D, end_coords: Coords_3D, 
-        offset: int=0, allow_short_circuit: bool=False) -> list[Coords_3D]|None:
+        offset: int=0, allow_short_circuit: bool=True) -> list[Coords_3D]|None:
 
         self.frontier = []
 

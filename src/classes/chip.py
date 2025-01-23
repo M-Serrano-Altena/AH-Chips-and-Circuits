@@ -114,13 +114,21 @@ class Chip:
         for i, existing_wire in enumerate(self.wires):
             if {existing_wire.coords_wire_segments[0], existing_wire.coords_wire_segments[-1]} == {gate_1_coords, gate_2_coords}:
                 self.wires[i] = wire
-                self.add_wire_to_occupancy(wire_segment_list, wire)
+                self.add_wire_segment_list_to_occupancy(wire_segment_list, wire)
                 return
 
     def add_entire_wires(self, list_all_wire_segments: list[list[Coords_3D]]) -> None:
         """Create multiple entire wires from a list of wire segments"""
         for wire_segment_list in list_all_wire_segments:
             self.add_entire_wire(wire_segment_list)
+
+    def reset_wire(self, wire: Wire) -> None:
+        self.remove_wire_from_occupancy(wire)
+        wire.reset()
+
+    def reset_all_wires(self) -> None:
+        for wire in self.wires:
+            self.reset_wire(wire)
 
     def is_fully_connected(self) -> bool:
         for wire in self.wires:
@@ -224,19 +232,20 @@ class Chip:
         Checks if a wire is in collision with another wire
         (2 wires occupying the same wire segment)
         """
-        for i in range(wire1.length - 1):
-            for j in range(wire2.length - 1):
-                wire1_coords1 = wire1.coords_wire_segments[i]
-                wire1_coords2 = wire1.coords_wire_segments[i + 1]
+        # sorting so that coordinate order of segment is consistent
+        wire1_segments_set: set[tuple[Coords_3D, Coords_3D]] = {
+            tuple(sorted((wire1.coords_wire_segments[i], wire1.coords_wire_segments[i + 1])))
+            for i in range(wire1.length - 1)
+        }
 
-                wire2_coords1 = wire2.coords_wire_segments[j]
-                wire2_coords2 = wire2.coords_wire_segments[j + 1]
-
-                # checks if subsequent coordinates in both wires are the same
-                if {wire1_coords1, wire1_coords2} == {wire2_coords1, wire2_coords2}:
-                    return True
-                
-        return False
+        wire2_segments_set: set[tuple[Coords_3D, Coords_3D]] = {
+            tuple(sorted((wire2.coords_wire_segments[i], wire2.coords_wire_segments[i + 1])))
+            for i in range(wire2.length - 1)
+        }
+        
+        # True if set intersection, False if no intersection
+        # .isdisjoint is efficient because it stops as soon as it finds an overlapping segment
+        return not wire1_segments_set.isdisjoint(wire2_segments_set)
     
     def wire_segment_causes_collision(self, neighbour: Coords_3D, current: Coords_3D) -> bool:
         """Checks if wiresegment causes a collision in chip"""
@@ -288,13 +297,15 @@ class Chip:
     def add_wire_segment_to_occupancy(self, coord: Coords_3D, wire: Wire) -> None:
         self.occupancy.add_wire_segment(coord, wire)
 
-    def add_wire_to_occupancy(self, wire_segment_list: list[Coords_3D], wire: Wire) -> None:
+    def add_wire_segment_list_to_occupancy(self, wire_segment_list: list[Coords_3D], wire: Wire) -> None:
         self.occupancy.add_wire(wire_segment_list, wire)
 
     def get_coord_occupancy(self, coords: Coords_3D, exclude_gates: bool=False) -> set[Wire, str]:
         return self.occupancy.get_coord_occupancy(coords, exclude_gates)
+    
+    def remove_wire_from_occupancy(self, wire: Wire) -> None:
+        self.occupancy.remove_wire_from_occupancy(wire)
                 
-
     def calc_total_grid_cost(self) -> int:
         """Calculate the total wire cost of a given grid configuration"""
         tot_wire_length = sum(wire.length for wire in self.wires)
@@ -312,7 +323,7 @@ class Chip:
         title = (
             f"Chip {self.chip_id}, Net {self.net_id}"
             + (f" - {algorithm_name} " if algorithm_name is not None else " ")
-            + f"(Cost = {total_cost}, Intersections = {intersect_amount}, Collisions = {collision_amount}, Fully Connected: {self.is_fully_connected()})"
+            + f"(Cost = {total_cost}, Intersections = {intersect_amount}, Collisions = {collision_amount}, Fully Connected: {self.is_fully_connected()}, theoretical min = {self.manhatten_distance_sum})"
         )
 
 

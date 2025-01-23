@@ -10,6 +10,9 @@ class Wire():
     
     def __repr__(self):
         return f"Wire({self.coords_wire_segments})"
+    
+    def eq(self, other: 'Wire') -> bool:
+        return self.coords_wire_segments == other.coords_wire_segments
 
     @property
     def length(self):
@@ -56,3 +59,7 @@ class Wire():
         """Add multiple wire segments to a wire"""
         for coords in coords_list:
             self.append_wire_segment(coords)
+
+    def reset(self):
+        if len(self.coords_wire_segments) >= 2:
+            self.coords_wire_segments = self.gates[:]

@@ -53,8 +53,8 @@ class Greed:
             if cost < lowest_cost and self.chip.is_fully_connected():
                 lowest_cost = cost
                 best_chip = self.chip
-
-            #print(f"{i}: cost = {cost}, lowest cost = {lowest_cost}")
+            
+            print(f"{i}: cost = {cost}, lowest cost = {lowest_cost}")
             
         return best_chip
 
@@ -67,9 +67,10 @@ class Greed:
         # note: it is impossible for the offset to be uneven and still have a valid connection, thus we check only for even values
         for offset in range(0, self.max_offset, 2):
             if self.print_log_messages:
+                print(f"Checking offset: {offset}")
 
-                # in greed_random this randomizes the order again per offset-check
-                self.chip.wires = self.get_wire_order(self.chip.wires)
+            # in greed_random this randomizes the order again per offset-check
+            self.chip.wires = self.get_wire_order(self.chip.wires)
 
             for wire in self.chip.wires:
                 # wire is already connected so we skip
@@ -118,7 +119,7 @@ class Greed:
             return
         
         if not self.chip.is_fully_connected():
-            pass
+            print("Warning: Not all wires were able to be connected")
         else:
             print("All wires are connected")
             print(f"Has wire collision: {self.chip.get_grid_wire_collision()}")

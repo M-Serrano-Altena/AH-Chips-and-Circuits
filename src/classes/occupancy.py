@@ -19,19 +19,15 @@ class Occupancy:
         self.occupancy_without_gates.clear()
     
     def remove_from_occupancy(self, coord: Coords_3D, wire: 'Wire') -> None:
-        if coord not in self.occupancy:
+        if coord not in self.occupancy or not self.occupancy[coord]:
             return
         
-        # return if occupancy is empty
-        if not self.occupancy[coord]:
-            return
-        
-        # we do not remove cordinates if GATE
+        # we do not remove cordinates if gate coords
         if "GATE" in self.occupancy[coord]:
             return
         
-        
         self.occupancy[coord].remove(wire)
+        self.occupancy_without_gates[coord].remove(wire)
 
     def add_wire_segment(self, coords: Coords_3D, wire: 'Wire') -> None:
         self.occupancy[coords].add(wire)
@@ -54,3 +50,6 @@ class Occupancy:
         
         return self.occupancy[coords]
     
+    def remove_wire_from_occupancy(self, wire: 'Wire') -> None:
+        for coord in wire.coords_wire_segments:
+            self.remove_from_occupancy(coord, wire)
