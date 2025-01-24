@@ -1,6 +1,5 @@
 from src.classes.chip import Chip
 from src.algorithms import IRRA
-import subprocess
 import time
 import copy
 import statistics
@@ -25,7 +24,7 @@ all_costs = []
 short_circuit_count = []
 results = []
 boolian_variation = [[False, False], [True, False], [False, True]]
-routing_names = ["BFS", "Annealing", "A_star"]
+technique_names = ["IRRA_A*_BFS", "IRRA_A*_Annealing", "IRRA_A*_A*"]
 best_output = []
 best_chip = None
 lowest_cost = inf
@@ -33,7 +32,7 @@ lowest_cost = inf
                      
                      
 for i, reroute_type in enumerate(boolian_variation):
-    while time.time() - start < 60*5:
+    while time.time() - start < 60*0.25:
         print(f"run: {n_runs}")
         chip0 = chip_og
         irra_irra = IRRA.IRRA_A_star(chip= chip0, iterations=1, intersection_limit= 0, acceptable_intersection=100, simulated_annealing = reroute_type[0], A_star_rerouting= reroute_type[1])
@@ -44,7 +43,7 @@ for i, reroute_type in enumerate(boolian_variation):
         if chip_cost < lowest_cost:
             best_chip = candidate_chip
             lowest_cost = chip_cost
-            best_algorithm = routing_names[i]
+            best_algorithm = technique_names[i]
         all_costs.append(chip_cost)
 
     results.append({
@@ -65,9 +64,9 @@ for i, reroute_type in enumerate(boolian_variation):
     start = time.time()
     n_runs = 0
 
-output_file = 'output/Astar_vs_PR/chip2w7_astar_test.json' 
+output_file = 'output/Astar_vs_PR/chip2w7_astar_input_test.json' 
 with open(output_file, 'w') as file:
     json.dump(results, file, indent=4)
 
-best_chip.save_output('chip2w7_astar_test.csv')
-best_chip.show_grid('chip2w7_astar_test.html', best_algorithm)
+best_chip.save_output('chip2w7_astar_input_test.csv')
+best_chip.show_grid('chip2w7_astar_input_test.html', best_algorithm)

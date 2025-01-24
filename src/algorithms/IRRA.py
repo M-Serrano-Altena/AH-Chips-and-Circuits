@@ -512,11 +512,6 @@ class IRRA(Pseudo_random):
         return start_temperature * (alpha ** iterations)
 
 
-
-
-
-
-
 class IRRA_A_star(A_star, IRRA):
 
     """
