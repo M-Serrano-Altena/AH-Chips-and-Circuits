@@ -49,7 +49,7 @@ def load_object_from_pickle_file(filename: str):
 def save_object_to_json_file(object: Any, filename: str):
     filename = add_missing_extension(filename=filename, extension=".json")
     with open(filename, "w") as file:
-        json.dump(object, file)
+        json.dump(object, file, indent=4)
 
 def load_object_from_json_file(filename: str):
     filename = add_missing_extension(filename=filename, extension=".json")

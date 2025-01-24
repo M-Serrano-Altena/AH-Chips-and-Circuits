@@ -22,7 +22,7 @@ class IRRA(Pseudo_random):
     Optional: put a limit on the initial intersection amount (l * GATE) checking only random configurations with a low intersection amount
     """
 
-    def __init__(self, chip: "Chip", iterations: int = 100, intersection_limit: int = 0, acceptable_intersection: int = 2, early_stopping_patience: int=5, max_offset: int = 10, allow_short_circuit: bool = False, sort_wires: bool = False, A_star_rerouting: bool=False, simulated_annealing: bool = False, start_temperature: int = 500, temperature_alpha: int = 0.9, random_seed: int|None = None):
+    def __init__(self, chip: "Chip", iterations: int = 100, intersection_limit: int = 0, acceptable_intersection: int = 2, early_stopping_patience: int=5, max_offset: int = 10, rerouting_offset: int=50, allow_short_circuit: bool = False, sort_wires: bool = False, A_star_rerouting: bool=False, simulated_annealing: bool = False, start_temperature: int = 500, temperature_alpha: int = 0.9, random_seed: int|None = None):
 
         super().__init__(
             chip=chip,
@@ -40,6 +40,7 @@ class IRRA(Pseudo_random):
         self.simulated_annealing = simulated_annealing
         self.temperature_alpha = temperature_alpha
         self.start_temperature = start_temperature
+        self.rerouting_offset = rerouting_offset
 
         if self.A_star_rerouting:
             self.a_star = A_star(
@@ -264,7 +265,7 @@ class IRRA(Pseudo_random):
                 chip=self.chip,
                 start=wire.gates[0],
                 end=wire.gates[1],
-                offset=10,
+                offset=self.rerouting_offset,
                 allow_short_circuit=True
             )
 
@@ -293,7 +294,7 @@ class IRRA(Pseudo_random):
                 chip=self.chip,
                 start=wire.gates[0],
                 end=wire.gates[1],
-                offset=10,
+                offset=self.rerouting_offset,
                 allow_short_circuit=False
             )
 
@@ -409,7 +410,7 @@ class IRRA(Pseudo_random):
                 chip=self.chip,
                 start=start,
                 end=end,
-                offset=10,              
+                offset=self.rerouting_offset,              
                 allow_short_circuit=False
             )
 
