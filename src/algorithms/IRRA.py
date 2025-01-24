@@ -22,7 +22,7 @@ class IRRA(Pseudo_random):
     Optional: put a limit on the initial intersection amount (l * GATE) checking only random configurations with a low intersection amount
     """
 
-    def __init__(self, chip: "Chip", iterations: int = 100, intersection_limit: int = 0, acceptable_intersection: int = 2, early_stopping_patience: int=5, max_offset: int = 10, allow_short_circuit: bool = False, sort_wires: bool = False, A_star_rerouting: bool=False, simulated_annealing: bool = False, start_temperature: int = 500, temperature_alpha: int = 0.9, random_seed: int|None = None):
+    def __init__(self, chip: "Chip", iterations: int = 100, intersection_limit: int = 0, acceptable_intersection: int = 2, early_stopping_patience: int=5, max_offset: int = 10, allow_short_circuit: bool = False, sort_wires: bool = False, A_star_rerouting: bool=False, simulated_annealing: bool = False, start_temperature: int = 1000, temperature_alpha: int = 0.95, random_seed: int|None = None):
 
         super().__init__(
             chip=chip,
@@ -193,7 +193,8 @@ class IRRA(Pseudo_random):
 
             # if no single-wire reroute improved things => stop
             if not improved:
-                print(f"End temperature: {temperature}")
+                if self.simulated_annealing:
+                    print(f"End temperature: {temperature}")
                 return
             
     def intersections_rerouting_A_star(self) -> None:
