@@ -1,9 +1,6 @@
 from src.classes.chip import Chip
-from src.classes.wire import Wire
 from src.algorithms.greed import Greed
-from src.algorithms.utils import Node, Coords_3D, INTERSECTION_COST, COLLISION_COST, manhattan_distance
-from math import inf
-from collections import deque
+from src.algorithms.utils import Coords_3D, INTERSECTION_COST, COLLISION_COST, manhattan_distance
 import heapq
 
 class A_star(Greed):
