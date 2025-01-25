@@ -6,7 +6,7 @@ import pandas as pd
 import os
 from src.classes.wire import Wire
 from src.classes.occupancy import Occupancy
-from src.algorithms.utils import cost_function, Coords_3D, manhattan_distance, add_missing_extension
+from src.algorithms.utils import cost_function, Coords_3D, manhattan_distance, add_missing_extension, clean_np_int64
 from functools import lru_cache
 import itertools
 
@@ -118,6 +118,10 @@ class Chip:
     def reset_wire(self, wire: Wire) -> None:
         self.remove_wire_from_occupancy(wire)
         wire.reset()
+
+    def reset_wires(self, wire_list: list[Wire]) -> None:
+        for wire in wire_list:
+            self.reset_wire(wire)
 
     def reset_all_wires(self) -> None:
         for wire in self.wires:
@@ -397,11 +401,13 @@ class Chip:
         # convert pandas dataframe to csv file
         output_df.to_csv(output_filepath, index=False)
 
+        # remove any np.int64 around coordinates
+        clean_np_int64(output_filepath)
+
 
 def load_chip_from_csv(path_to_csv: str, padding: int=1) -> Chip:
     from ast import literal_eval
     df = pd.read_csv(path_to_csv)
-    print(df)
     chip_net_string = df["net"].iloc[-1]
     chip_id = int(chip_net_string[5])
     net_id = int(chip_net_string[-1])
@@ -410,7 +416,6 @@ def load_chip_from_csv(path_to_csv: str, padding: int=1) -> Chip:
         literal_eval(string_list) for string_list in df["wires"].tolist()
     ]
     all_wire_segments_list.pop()
-    print(all_wire_segments_list)
 
     chip = Chip(chip_id=chip_id, net_id=net_id)
     chip.add_entire_wires(all_wire_segments_list)

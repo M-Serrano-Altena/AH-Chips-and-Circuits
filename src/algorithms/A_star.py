@@ -2,6 +2,8 @@ from src.classes.chip import Chip
 from src.algorithms.greed import Greed
 from src.algorithms.utils import Coords_3D, INTERSECTION_COST, COLLISION_COST, manhattan_distance
 import heapq
+import itertools
+from math import inf, perm
 
 class A_star(Greed):
     """
@@ -162,3 +164,90 @@ class A_star(Greed):
                 heapq.heappush(self.frontier, (neighbour_cost, neighbour_coords, neighbour_path))
 
                 visited.add(neighbour_coords)
+
+class A_star_optimize(A_star):
+    """
+    An algorithm using A* to optimize a given chip configuration
+    Note: This algoritm doesn't solve an empty chip, but rather optimizes a completed chip
+    so that the wires have a lower cost.
+
+    The algorithm gets rid of different multiple wires at the same time and tries make new wire connections
+    to see if the cost decreases. 
+    """
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        self.lowest_cost = inf
+        self.previous_lowest_cost = inf
+
+    def optimize(self, reroute_n_wires: int) -> None:
+        for i in range(1, reroute_n_wires + 1):
+            improved = True
+            repeat = False
+
+            # keep rerouting until lowest cost is reached
+            while improved:
+                print(f"optimizing {i} wires at a time...")
+                improved = self.optimize_n_wires_at_at_time(amount_of_wires=i, switch_equal_configs=repeat)
+                repeat = True
+
+    
+    def optimize_n_wires_at_at_time(self, amount_of_wires: int, switch_equal_configs: bool=False) -> bool:
+        amount_of_permutations = perm(len(self.chip.wires), amount_of_wires)
+        for i, wires in enumerate(itertools.permutations(self.chip.wires, r=amount_of_wires)):
+            if i % 1000 == 0:
+                print(f"wire combo {i} out of {amount_of_permutations} permutations")
+
+            revert = False
+            # snapshot old wire states
+            old_wire_coords = [wire.coords_wire_segments[:] for wire in wires]
+            old_intersection_num = self.chip.get_wire_intersect_amount()
+            new_cost = self.lowest_cost
+
+            # 1) remove old wires from chip
+            self.chip.reset_wires(wires)
+
+            for wire in wires:
+                # 2) attempt A* for a new, hopefully shorter route.
+                start, end = wire.gates[0], wire.gates[-1]
+                new_path = self.shortest_cable(self.chip, start, end, allow_short_circuit=True)
+
+                # If A* doesn't yield a new path, skip
+                if not new_path:
+                    revert = True
+                    break
+
+                wire.append_wire_segment_list(new_path)
+                self.chip.add_wire_segment_list_to_occupancy(new_path, wire)
+
+            # 3) if no new path, check amount of intersections
+            if not revert:
+                new_intersection_num = self.chip.get_wire_intersect_amount()
+                revert = new_intersection_num > old_intersection_num
+
+            # if amount of intersections hasn't increased, check the cost
+            if not revert:
+                new_cost = self.chip.calc_total_grid_cost()
+                if switch_equal_configs:
+                    revert = new_cost > self.lowest_cost
+                else:
+                    revert = new_cost >= self.lowest_cost
+
+            if revert or not self.chip.is_fully_connected():
+                for wire, old_coords in zip(wires, old_wire_coords):
+                    self.chip.reset_wire(wire)
+                    wire.append_wire_segment_list(old_coords)
+                    self.chip.add_wire_segment_list_to_occupancy(old_coords, wire)
+
+            else:
+                self.lowest_cost = new_cost
+                if new_cost < self.lowest_cost:
+                    print(f"new lowest cost: {new_cost}")
+
+
+        if self.lowest_cost == self.previous_lowest_cost:
+            return False
+        
+        self.previous_lowest_cost = self.lowest_cost
+        return True
