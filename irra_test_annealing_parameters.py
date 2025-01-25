@@ -30,6 +30,7 @@ for temperature in temperature_candidates:
                 "mean_cost": statistics.mean(all_costs),
                 "median_cost": statistics.median(all_costs),
                 "stdev_cost": statistics.stdev(all_costs),
+                "best_cost found": min(all_costs),
                 "all_costs": all_costs
                 })
         

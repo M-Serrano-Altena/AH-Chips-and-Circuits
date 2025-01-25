@@ -194,7 +194,8 @@ class IRRA(Pseudo_random):
 
             # if no single-wire reroute improved things => stop
             if not improved:
-                print(f"End temperature: {temperature}")
+                if self.simulated_annealing:
+                    print(f"End temperature: {temperature}")
                 return
             
     def intersections_rerouting_A_star(self) -> None:
@@ -509,11 +510,6 @@ class IRRA(Pseudo_random):
     def exponential_cooling(start_temperature: int, alpha: int, iterations: int) -> int:
 
         return start_temperature * (alpha ** iterations)
-
-
-
-
-
 
 
 class IRRA_A_star(A_star, IRRA):
