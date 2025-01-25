@@ -59,21 +59,19 @@ def load_object_from_json_file(filename: str):
     with open(filename, "r") as file:
         return json.load(file)
 
-def extract_algo_name_from_plot_title(plot_file_path: str) -> str|None:
+def extract_algo_name_from_plot_title(plot_file_path: str, chip_id: int, net_id: int) -> str:
     with open(plot_file_path, 'r', encoding='utf-8') as file:
         html_content = file.read()
 
-    # Find the Plotly layout JSON using a regular expression
-    match = re.search(re.escape('"title":{"text":"Chip 1, Net 4 -') + r'(.*?)\(', html_content, re.DOTALL)
+    # Find the algorithm from the Plotly title
+    match = re.search(re.escape(f'"title":{"{"}"text":"Chip {chip_id}, Net {net_id} -') + r'(.*?)\(', html_content, re.DOTALL)
     
     algorithm = ""
     if match:
         algorithm = match.group(1).strip()
     
-    if algorithm:
-        return algorithm
+    return algorithm
     
-    return None
 
 def clean_np_int64(input_file: str, output_file: str|None=None) -> None:
     if output_file is None:

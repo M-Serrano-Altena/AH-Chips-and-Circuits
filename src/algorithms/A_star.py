@@ -184,13 +184,13 @@ class A_star_optimize(A_star):
     def optimize(self, reroute_n_wires: int) -> None:
         for i in range(1, reroute_n_wires + 1):
             improved = True
-            repeat = False
+            cycle = 1
 
             # keep rerouting until lowest cost is reached
             while improved:
-                print(f"optimizing {i} wires at a time...")
-                improved = self.optimize_n_wires_at_at_time(amount_of_wires=i, switch_equal_configs=repeat)
-                repeat = True
+                print(f"optimizing {i} wire(s) at a time | cycle {cycle}")
+                improved = self.optimize_n_wires_at_at_time(amount_of_wires=i, switch_equal_configs=cycle == 1)
+                cycle += 1
 
     
     def optimize_n_wires_at_at_time(self, amount_of_wires: int, switch_equal_configs: bool=False) -> bool:
@@ -241,9 +241,10 @@ class A_star_optimize(A_star):
                     self.chip.add_wire_segment_list_to_occupancy(old_coords, wire)
 
             else:
-                self.lowest_cost = new_cost
                 if new_cost < self.lowest_cost:
                     print(f"new lowest cost: {new_cost}")
+                self.lowest_cost = new_cost
+
 
 
         if self.lowest_cost == self.previous_lowest_cost:

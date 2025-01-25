@@ -54,11 +54,7 @@ class Chip:
         self.coords_to_gate_map = {coords: gate_id for gate_id, coords in self.gates.items()}
         self.gate_coords = set(self.gates.values())
 
-        # grid size
-        self.grid_range_x = (-padding + 1, max(coords[0] for coords in self.gates.values()) + padding)
-        self.grid_range_y = (-padding + 1, max(coords[1] for coords in self.gates.values()) + padding)
-        self.grid_range_z = (0, 7)
-        self.grid_shape = (self.grid_range_x[1] - self.grid_range_x[0], self.grid_range_y[1] - self.grid_range_y[0], self.grid_range_z[1] - self.grid_range_z[0])
+        self.set_grid_size(padding)
 
         # initate occupancy grid self.occupancy[x][y][z] is empty set for free item
         self.occupancy =  Occupancy()
@@ -94,6 +90,12 @@ class Chip:
 
             wire_in_system = Wire(gate_1_coords, gate_2_coords)
             self.wires.append(wire_in_system)
+
+    def set_grid_size(self, padding: int):
+        self.grid_range_x = (-padding + 1, max(coords[0] for coords in self.gates.values()) + padding)
+        self.grid_range_y = (-padding + 1, max(coords[1] for coords in self.gates.values()) + padding)
+        self.grid_range_z = (0, 7)
+        self.grid_shape = (self.grid_range_x[1] - self.grid_range_x[0], self.grid_range_y[1] - self.grid_range_y[0], self.grid_range_z[1] - self.grid_range_z[0])
 
     def add_entire_wire(self, wire_segment_list: list[Coords_3D]) -> None:
         """Create an entire wire from a wire segment list"""
@@ -326,6 +328,8 @@ class Chip:
             + f"(Cost = {total_cost}, Intersections = {intersect_amount}, Collisions = {collision_amount}, Fully Connected: {self.is_fully_connected()}, theoretical min = {self.manhatten_distance_sum})"
         )
 
+        padding = 1 - min(component for wire in self.wires for coord in wire.coords_wire_segments for component in coord)
+        self.set_grid_size(padding)
 
         gates_x, gates_y, gates_z = zip(*self.gates.values())
         gates_plot = go.Scatter3d(x=gates_x, y=gates_y, z=gates_z, mode='markers', marker=dict(color='red', size=8), text=list(self.gates.keys()), textposition='top center', textfont=dict(size=100, color='black'), hovertemplate='Gate %{text}: (%{x}, %{y}, %{z})<extra></extra>', name='Gates')
@@ -417,7 +421,7 @@ def load_chip_from_csv(path_to_csv: str, padding: int=1) -> Chip:
     ]
     all_wire_segments_list.pop()
 
-    chip = Chip(chip_id=chip_id, net_id=net_id)
+    chip = Chip(chip_id=chip_id, net_id=net_id, padding=padding)
     chip.add_entire_wires(all_wire_segments_list)
 
     return chip
