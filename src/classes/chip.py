@@ -27,7 +27,7 @@ def convert_to_matrix_coords(coords, matrix_y_size):
     return matrix_y_size - 1 - y_coord, x_coord
 
 class Chip:
-    def __init__(self, base_data_path, chip_id, net_id, padding: int=1, output_folder="output/"):
+    def __init__(self, base_data_path: str=r"data/", chip_id: int=0, net_id: int=1, padding: int=1, output_folder="output/"):
         self.chip_id = chip_id
         self.net_id = net_id
         self.output_folder = output_folder
@@ -396,3 +396,23 @@ class Chip:
 
         # convert pandas dataframe to csv file
         output_df.to_csv(output_filepath, index=False)
+
+
+def load_chip_from_csv(path_to_csv: str, padding: int=1) -> Chip:
+    from ast import literal_eval
+    df = pd.read_csv(path_to_csv)
+    print(df)
+    chip_net_string = df["net"].iloc[-1]
+    chip_id = int(chip_net_string[5])
+    net_id = int(chip_net_string[-1])
+
+    all_wire_segments_list: list[list[Coords_3D]] = [
+        literal_eval(string_list) for string_list in df["wires"].tolist()
+    ]
+    all_wire_segments_list.pop()
+    print(all_wire_segments_list)
+
+    chip = Chip(chip_id=chip_id, net_id=net_id)
+    chip.add_entire_wires(all_wire_segments_list)
+
+    return chip
