@@ -14,6 +14,8 @@ class Pseudo_random(Greed_random):
 
     def run(self) -> None:
 
+        self.max_offset = 20
+
         self.chip.wires = self.get_wire_order(self.chip.wires)
 
         # we go through all the wires in the chip
