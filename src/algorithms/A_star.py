@@ -4,6 +4,7 @@ from src.algorithms.utils import Coords_3D, INTERSECTION_COST, COLLISION_COST, m
 import heapq
 import itertools
 from math import inf, perm
+import random
 
 class A_star(Greed):
     """
@@ -167,33 +168,60 @@ class A_star(Greed):
 
 class A_star_optimize(A_star):
     """
-    An algorithm using A* to optimize a given chip configuration
-    Note: This algoritm doesn't solve an empty chip, but rather optimizes a completed chip
-    so that the wires have a lower cost.
-
-    The algorithm gets rid of different multiple wires at the same time and tries make new wire connections
-    to see if the cost decreases. 
+    An algorithm using A* to optimize a given chip configuration.
+    
+    This algorithm optimizes a completed chip by reducing wire costs. 
+    It removes and reroutes multiple wires simultaneously to achieve a lower cost.
     """
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        self.lowest_cost = inf
-        self.previous_lowest_cost = inf
+        self.current_cost = self.chip.calc_total_grid_cost()
+        self.best_wire_coords: list[list[Coords_3D]] = [wire.coords_wire_segments for wire in self.chip.wires]
+        self.lowest_cost = self.current_cost
+        self.previous_lowest_cost = self.current_cost
 
-    def optimize(self, reroute_n_wires: int) -> None:
+    def optimize(self, reroute_n_wires: int, start_temperature: int=0, alpha: int=0.99) -> None:
+        """
+        Optimize the chip by rerouting a specified number of wires with optional
+        simulated annealing parameters for temperature and cooling rate.
+
+        Args:
+            reroute_n_wires (int): Number of wires to reroute simultaneously.
+            start_temperature (int): Initial temperature for simulated annealing.
+            alpha (int): Cooling rate for simulated annealing.
+        """
+        self.start_temperature = start_temperature
+        self.alpha = alpha
         for i in range(1, reroute_n_wires + 1):
             improved = True
             cycle = 1
+            self.temperature = self.start_temperature
 
-            # keep rerouting until lowest cost is reached
+            # keep rerouting until lowest cost doesn't improve in a cycle
             while improved:
+                # each cycle, the temperature resets
+                self.temperature = self.start_temperature
                 print(f"optimizing {i} wire(s) at a time | cycle {cycle}")
                 improved = self.optimize_n_wires_at_at_time(amount_of_wires=i, switch_equal_configs=cycle == 1)
                 cycle += 1
 
+        self.chip.reset_all_wires()
+        self.chip.add_entire_wires(self.best_wire_coords)
+
     
     def optimize_n_wires_at_at_time(self, amount_of_wires: int, switch_equal_configs: bool=False) -> bool:
+        """
+        Optimize a specific number of wires by rerouting them to reduce cost or intersections.
+
+        Args:
+            amount_of_wires (int): Number of wires to optimize in a single pass.
+            switch_equal_configs (bool): If True, allow switching configurations with equal costs.
+
+        Returns:
+            bool: True if a better configuration is found, False otherwise.
+        """
         amount_of_permutations = perm(len(self.chip.wires), amount_of_wires)
         for i, wires in enumerate(itertools.permutations(self.chip.wires, r=amount_of_wires)):
             if i % 1000 == 0:
@@ -221,30 +249,45 @@ class A_star_optimize(A_star):
                 wire.append_wire_segment_list(new_path)
                 self.chip.add_wire_segment_list_to_occupancy(new_path, wire)
 
-            # 3) if no new path, check amount of intersections
+            # 3) if new path succesful, check amount of intersections
             if not revert:
                 new_intersection_num = self.chip.get_wire_intersect_amount()
-                revert = new_intersection_num > old_intersection_num
+                if self.temperature == 0:
+                    revert = new_intersection_num > old_intersection_num
 
             # if amount of intersections hasn't increased, check the cost
             if not revert:
                 new_cost = self.chip.calc_total_grid_cost()
+
+            # for simulated annealing
+            if self.temperature != 0 and not revert:
+                revert = not self.accept_new_config(new_cost=new_cost)
+
+            # non-simulated annealing
+            elif not revert:
                 if switch_equal_configs:
                     revert = new_cost > self.lowest_cost
                 else:
                     revert = new_cost >= self.lowest_cost
 
+            # revert back to old configuration
             if revert or not self.chip.is_fully_connected():
                 for wire, old_coords in zip(wires, old_wire_coords):
                     self.chip.reset_wire(wire)
                     wire.append_wire_segment_list(old_coords)
                     self.chip.add_wire_segment_list_to_occupancy(old_coords, wire)
 
+            # keep current change
             else:
+                if new_cost != self.current_cost:
+                    print(f"new cost: {new_cost} | lowest cost = {self.lowest_cost}")
+                self.current_cost = new_cost
                 if new_cost < self.lowest_cost:
-                    print(f"new lowest cost: {new_cost}")
-                self.lowest_cost = new_cost
+                    self.lowest_cost = new_cost
+                    self.best_wire_coords = [wire.coords_wire_segments for wire in self.chip.wires]
 
+            if self.temperature != 0:
+                self.temperature = self.exponential_cooling(iterations=i, total_permutations=amount_of_permutations)
 
 
         if self.lowest_cost == self.previous_lowest_cost:
@@ -252,3 +295,48 @@ class A_star_optimize(A_star):
         
         self.previous_lowest_cost = self.lowest_cost
         return True
+    
+    @staticmethod
+    def acceptance_probability(new_cost: int, old_cost: int, temperature: int) -> int:
+        """
+        Calculate the acceptance probability for a new configuration in simulated annealing.
+
+        Args:
+            new_cost (int): Cost of the new configuration.
+            old_cost (int): Cost of the current configuration.
+            temperature (int): Current temperature in simulated annealing.
+
+        Returns:
+            int: Acceptance probability for the new configuration.
+        """
+        if new_cost < old_cost:
+            return 1
+
+        return 2 ** ((old_cost - new_cost) / temperature)
+    
+    def accept_new_config(self, new_cost: int) -> bool:
+        """
+        Decide whether to accept a new configuration based on simulated annealing.
+
+        Args:
+            new_cost (int): Cost of the new configuration.
+
+        Returns:
+            bool: True if the new configuration is accepted, False otherwise.
+        """
+        rand_num = random.random()
+        acceptance_prob = self.acceptance_probability(new_cost, self.current_cost, self.temperature)
+        return rand_num < acceptance_prob
+
+    def exponential_cooling(self, iterations: int, total_permutations: int) -> int:
+        """
+        Compute the new temperature based on exponential cooling.
+
+        Args:
+            iterations (int): Current iteration index.
+            total_permutations (int): Total number of permutations being processed.
+
+        Returns:
+            int: New temperature after cooling.
+        """
+        return self.start_temperature * (self.alpha ** (iterations / total_permutations * 1500))

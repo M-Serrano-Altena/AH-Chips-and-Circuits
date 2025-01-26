@@ -33,9 +33,9 @@ algorithm_used_name = extract_algo_name_from_plot_title(plot_file_path, chip_id=
 
 chip = load_chip_from_csv(csv_file_path, padding=padding)
 a_star_optimize = A_star_optimize(chip)
-a_star_optimize.optimize(reroute_n_wires=reroute_n_wires)
+a_star_optimize.optimize(reroute_n_wires=reroute_n_wires, start_temperature=5, alpha=0.99)
 
-if "+ A* optimize" not in algorithm_used_name:
+if "+ A* optimize" not in algorithm_used_name and algorithm_used_name:
     algorithm_new_name = f"{algorithm_used_name} + A* optimize"
 else:
     algorithm_new_name = algorithm_used_name
