@@ -6,7 +6,7 @@ import pandas as pd
 import os
 from src.classes.wire import Wire
 from src.classes.occupancy import Occupancy
-from src.algorithms.utils import cost_function, Coords_3D, manhattan_distance, add_missing_extension
+from src.algorithms.utils import cost_function, Coords_3D, manhattan_distance, add_missing_extension, clean_np_int64
 from functools import lru_cache
 import itertools
 
@@ -27,7 +27,7 @@ def convert_to_matrix_coords(coords, matrix_y_size):
     return matrix_y_size - 1 - y_coord, x_coord
 
 class Chip:
-    def __init__(self, base_data_path, chip_id, net_id, padding: int=1, output_folder="output/"):
+    def __init__(self, base_data_path: str=r"data/", chip_id: int=0, net_id: int=1, padding: int=1, output_folder="output/"):
         self.chip_id = chip_id
         self.net_id = net_id
         self.output_folder = output_folder
@@ -54,11 +54,7 @@ class Chip:
         self.coords_to_gate_map = {coords: gate_id for gate_id, coords in self.gates.items()}
         self.gate_coords = set(self.gates.values())
 
-        # grid size
-        self.grid_range_x = (-padding + 1, max(coords[0] for coords in self.gates.values()) + padding)
-        self.grid_range_y = (-padding + 1, max(coords[1] for coords in self.gates.values()) + padding)
-        self.grid_range_z = (0, 7)
-        self.grid_shape = (self.grid_range_x[1] - self.grid_range_x[0], self.grid_range_y[1] - self.grid_range_y[0], self.grid_range_z[1] - self.grid_range_z[0])
+        self.set_grid_size(padding)
 
         # initate occupancy grid self.occupancy[x][y][z] is empty set for free item
         self.occupancy =  Occupancy()
@@ -95,6 +91,12 @@ class Chip:
             wire_in_system = Wire(gate_1_coords, gate_2_coords)
             self.wires.append(wire_in_system)
 
+    def set_grid_size(self, padding: int):
+        self.grid_range_x = (-padding + 1, max(coords[0] for coords in self.gates.values()) + padding)
+        self.grid_range_y = (-padding + 1, max(coords[1] for coords in self.gates.values()) + padding)
+        self.grid_range_z = (0, 7)
+        self.grid_shape = (self.grid_range_x[1] - self.grid_range_x[0], self.grid_range_y[1] - self.grid_range_y[0], self.grid_range_z[1] - self.grid_range_z[0])
+
     def add_entire_wire(self, wire_segment_list: list[Coords_3D]) -> None:
         """Create an entire wire from a wire segment list"""
         gate_1_coords = wire_segment_list[0]
@@ -118,6 +120,10 @@ class Chip:
     def reset_wire(self, wire: Wire) -> None:
         self.remove_wire_from_occupancy(wire)
         wire.reset()
+
+    def reset_wires(self, wire_list: list[Wire]) -> None:
+        for wire in wire_list:
+            self.reset_wire(wire)
 
     def reset_all_wires(self) -> None:
         for wire in self.wires:
@@ -322,6 +328,8 @@ class Chip:
             + f"(Cost = {total_cost}, Intersections = {intersect_amount}, Collisions = {collision_amount}, Fully Connected: {self.is_fully_connected()}, theoretical min = {self.manhatten_distance_sum})"
         )
 
+        padding = 1 - min(component for wire in self.wires for coord in wire.coords_wire_segments for component in coord)
+        self.set_grid_size(padding)
 
         gates_x, gates_y, gates_z = zip(*self.gates.values())
         gates_plot = go.Scatter3d(x=gates_x, y=gates_y, z=gates_z, mode='markers', marker=dict(color='red', size=8), text=list(self.gates.keys()), textposition='top center', textfont=dict(size=100, color='black'), hovertemplate='Gate %{text}: (%{x}, %{y}, %{z})<extra></extra>', name='Gates')
@@ -396,3 +404,24 @@ class Chip:
 
         # convert pandas dataframe to csv file
         output_df.to_csv(output_filepath, index=False)
+
+        # remove any np.int64 around coordinates
+        clean_np_int64(output_filepath)
+
+
+def load_chip_from_csv(path_to_csv: str, padding: int=1) -> Chip:
+    from ast import literal_eval
+    df = pd.read_csv(path_to_csv)
+    chip_net_string = df["net"].iloc[-1]
+    chip_id = int(chip_net_string[5])
+    net_id = int(chip_net_string[-1])
+
+    all_wire_segments_list: list[list[Coords_3D]] = [
+        literal_eval(string_list) for string_list in df["wires"].tolist()
+    ]
+    all_wire_segments_list.pop()
+
+    chip = Chip(chip_id=chip_id, net_id=net_id, padding=padding)
+    chip.add_entire_wires(all_wire_segments_list)
+
+    return chip

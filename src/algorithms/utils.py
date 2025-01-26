@@ -1,6 +1,9 @@
 import pickle
 import json
 import os
+import re
+import csv
+import tempfile
 from typing import Any
 
 INTERSECTION_COST = 300
@@ -55,3 +58,36 @@ def load_object_from_json_file(filename: str):
     filename = add_missing_extension(filename=filename, extension=".json")
     with open(filename, "r") as file:
         return json.load(file)
+
+def extract_algo_name_from_plot_title(plot_file_path: str, chip_id: int, net_id: int) -> str:
+    with open(plot_file_path, 'r', encoding='utf-8') as file:
+        html_content = file.read()
+
+    # Find the algorithm from the Plotly title
+    match = re.search(re.escape(f'"title":{"{"}"text":"Chip {chip_id}, Net {net_id} -') + r'(.*?)\(', html_content, re.DOTALL)
+    
+    algorithm = ""
+    if match:
+        algorithm = match.group(1).strip()
+    
+    return algorithm
+    
+
+def clean_np_int64(input_file: str, output_file: str|None=None) -> None:
+    if output_file is None:
+        output_file = input_file
+
+    with open(input_file, 'r', encoding='utf-8') as infile, tempfile.NamedTemporaryFile('w', encoding='utf-8', newline='', delete=False) as tmpfile:
+        reader = csv.reader(infile)
+        writer = csv.writer(tmpfile)
+
+        # Write the header
+        header = next(reader)
+        writer.writerow(header)
+
+        # Process each row
+        for row in reader:
+            cleaned_row = [re.sub(r"np\.int64\((\d+)\)", r"\1", cell) for cell in row]
+            writer.writerow(cleaned_row)
+
+        os.replace(tmpfile.name, output_file)

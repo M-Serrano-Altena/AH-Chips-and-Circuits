@@ -26,14 +26,19 @@ short_circuit_count = []
 results = []
 boolian_variation = [{"sim_anneal": False, "A_star": False}, {"sim_anneal": False, "A_star": False}, {"sim_anneal": False, "A_star": False}]
 
-RUNTIME_H = 1
-RUNTIME_S = 30
+RUNTIME_H = 4
+RUNTIME_M = 0
+RUNTIME_S = 0
 
-if RUNTIME_S == 0:
-    RUNTIME_S = 3600 * RUNTIME_H
+RUNTIME_S += 3600 * RUNTIME_H + 60*RUNTIME_M
 
-for offset in range(10, 100, 2):
-    while time.time() - start < RUNTIME_S:
+start_offset = 10
+final_offset = 100
+step_size = 2
+amount_of_offsets = (final_offset - start_offset) // step_size + 1
+
+for offset in range(start_offset, final_offset + 1, 2):
+    while time.time() - start < RUNTIME_S/amount_of_offsets:
         print(f"Offset: {offset} | run: {n_runs}")
         chip = chip_og
         irra_irra = IRRA.IRRA(chip= chip, iterations=1, intersection_limit=0, acceptable_intersection=100, rerouting_offset=offset, simulated_annealing=True, start_temperature=1000, temperature_alpha=0.95)
