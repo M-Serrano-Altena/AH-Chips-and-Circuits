@@ -14,7 +14,7 @@ base_data_path = r"data/"
 chip_id = 2
 net_id = 7
 padding = 5
-reroute_n_wires = 3
+reroute_n_wires = 10
 
 if len(argv) >= 2:
     chip_id = argv[1]
