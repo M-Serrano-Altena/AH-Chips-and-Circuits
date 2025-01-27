@@ -1,7 +1,10 @@
-# main.py (or any script you prefer)
-from src.classes.chip import Chip
-from src.algorithms import IRRA
+import sys
 from sys import argv
+import os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
+from src.classes.chip import Chip
+from src.algorithms.IRRA import IRRA_A_star
 
 chip_id = 2
 net_id = 7
@@ -13,11 +16,11 @@ if len(argv) == 3:
     net_id = argv[2]
 
 # 1) we initialize the chip
-base_data_path = r"data/"
+base_data_path = r"src/source_data"
 chip0 = Chip(base_data_path, chip_id=chip_id, net_id=net_id, output_folder="output", padding=3)
 
 # 2) we use the algo with offset
-irra_irra = IRRA.IRRA_A_star(chip=chip0, iterations=50, intersection_limit=0, acceptable_intersection=3, A_star_rerouting=True)
+irra_irra = IRRA_A_star(chip=chip0, iterations=50, intersection_limit=0, acceptable_intersection=3, A_star_rerouting=True)
 best_chip = irra_irra.run()
 
 # 3) we check the final costs

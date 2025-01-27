@@ -41,7 +41,7 @@ for offset in range(start_offset, final_offset + 1, 2):
     while time.time() - start < RUNTIME_S/amount_of_offsets:
         print(f"Offset: {offset} | run: {n_runs}")
         chip = chip_og
-        irra_irra = IRRA.IRRA(chip= chip, iterations=1, intersection_limit=0, acceptable_intersection=100, rerouting_offset=offset, simulated_annealing=True, start_temperature=1000, temperature_alpha=0.95)
+        irra_irra = IRRA.IRRA_PR(chip= chip, iterations=1, intersection_limit=0, acceptable_intersection=100, rerouting_offset=offset, simulated_annealing=True, start_temperature=1000, temperature_alpha=0.95)
         best_chip = irra_irra.run()
         all_costs.append(best_chip.calc_total_grid_cost())
         short_circuit_count.append(best_chip.get_wire_intersect_amount())

@@ -12,7 +12,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from src.classes.wire import Wire
 
-class IRRA(Pseudo_random):
+class IRRA_PR(Pseudo_random):
 
     """
     Iterative Random Rerouting Algorithm (IRRA):
@@ -513,7 +513,7 @@ class IRRA(Pseudo_random):
         return start_temperature * (alpha ** iterations)
 
 
-class IRRA_A_star(A_star, IRRA):
+class IRRA_A_star(A_star, IRRA_PR):
 
     """
     Iterative Random Rerouting Algorithm (IRRA):

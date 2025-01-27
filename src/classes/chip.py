@@ -406,7 +406,7 @@ class Chip:
         output_df.to_csv(output_filepath, index=False)
 
         # remove any np.int64 around coordinates
-        clean_np_int64(output_filepath)
+        #clean_np_int64(output_filepath)
 
 
 def load_chip_from_csv(path_to_csv: str, padding: int=1) -> Chip:

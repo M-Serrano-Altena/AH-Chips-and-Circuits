@@ -21,7 +21,7 @@ results = []
 for temperature in temperature_candidates:
     for alpha in alpha_candidates:
         chip0 = chip_og
-        irra_irra = IRRA.IRRA(chip= chip0, iterations=250, intersection_limit= 0, acceptable_intersection=100, simulated_annealing= True, temperature_alpha= alpha, start_temperature= temperature)
+        irra_irra = IRRA.IRRA_PR(chip= chip0, iterations=250, intersection_limit= 0, acceptable_intersection=100, simulated_annealing= True, temperature_alpha= alpha, start_temperature= temperature)
         best_chip = irra_irra.run()
         all_costs = irra_irra.all_costs
         results.append({

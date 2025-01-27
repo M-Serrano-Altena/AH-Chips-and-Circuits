@@ -1,0 +1,23 @@
+[
+    {
+        "simulated annealing": false,
+        "a_star_rerouting": true,
+        "mean_cost": 2064.6666666666665,
+        "median_cost": 1876,
+        "stdev_cost": 356.63052776414605,
+        "best_cost found": 1842,
+        "median short circuit": 3,
+        "lowest short circuit": 3,
+        "n_runs": 3,
+        "all_costs": [
+            1876,
+            2476,
+            1842
+        ],
+        "short_circuit_count": [
+            3,
+            5,
+            3
+        ]
+    }
+]
