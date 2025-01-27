@@ -22,7 +22,7 @@ class IRRA(Pseudo_random):
     Optional: put a limit on the initial intersection amount (l * GATE) checking only random configurations with a low intersection amount
     """
 
-    def __init__(self, chip: "Chip", iterations: int = 100, intersection_limit: int = 0, acceptable_intersection: int = 2, early_stopping_patience: int=5, max_offset: int = 10, rerouting_offset: int=50, allow_short_circuit: bool = False, sort_wires: bool = False, A_star_rerouting: bool=False, simulated_annealing: bool = False, start_temperature: int = 500, temperature_alpha: int = 0.9, random_seed: int|None = None):
+    def __init__(self, chip: "Chip", iterations: int = 100, intersection_limit: int = 0, acceptable_intersection: int = 2, early_stopping_patience: int=999999, max_offset: int = 58, rerouting_offset: int=58, allow_short_circuit: bool = False, sort_wires: bool = False, A_star_rerouting: bool=False, simulated_annealing: bool = False, start_temperature: int = 500, temperature_alpha: int = 0.9, random_seed: int|None = None):
 
         super().__init__(
             chip=chip,
@@ -195,7 +195,8 @@ class IRRA(Pseudo_random):
             # if no single-wire reroute improved things => stop
             if not improved:
                 if self.simulated_annealing:
-                    print(f"End temperature: {temperature}")
+                    print(f"Currently using starttemperature: {self.start_temperature} with alpha: {self.temperature_alpha}.")
+
                 return
             
     def intersections_rerouting_A_star(self) -> None:
@@ -276,7 +277,7 @@ class IRRA(Pseudo_random):
                 new_cost = self.chip.calc_total_grid_cost()
 
                 # if acceptance function refuses new path we set path to none and continue
-                if (random.random() < self.acceptance_probability(new_cost, old_cost, temperature)) and new_cost != old_cost:
+                if (random.random() < self.acceptance_probability(new_cost, old_cost, temperature)) and new_cost != old_cost and self.chip.is_fully_connected():
                     # print(f"We have a temperature of {temperature} and a accepetanceprob of: {self.acceptance_probability(new_cost, old_cost, temperature)}")
                     if new_cost > old_cost:
                         print(f"Our old costs are: {old_cost} and our new costs are {new_cost}")
@@ -429,7 +430,7 @@ class IRRA(Pseudo_random):
                 new_cost = self.chip.calc_total_grid_cost()
 
                 # 3) if no improvement, revert
-                if new_cost >= old_cost:
+                if new_cost >= old_cost or not self.chip.is_fully_connected():
                     # remove newly added route
                     for coord in proposed_wire[1:-1]:
                         self.chip.occupancy.remove_from_occupancy(coord, wire)
@@ -576,6 +577,9 @@ class IRRA_A_star(A_star, IRRA):
             current_cost = self.chip.calc_total_grid_cost()
             current_intersections = self.chip.get_wire_intersect_amount()
             print(f"{algo_name_routing} After rerouting: cost={current_cost}, intersections={current_intersections}")
+
+            # save current cost to all cost list for parameter research
+            self.all_costs.append(current_cost) 
 
             if current_cost < self.best_cost:
                 self.best_cost = current_cost
