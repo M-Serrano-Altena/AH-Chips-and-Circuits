@@ -6708,7 +6708,7 @@
         "mean_cost": 10873.187446988974,
         "median_cost": 10232,
         "stdev_cost": 5170.238925294465,
-        "best_cost found": 893,
+        "best_cost found": 932,
         "median short circuit": 31,
         "lowest short circuit": 0,
         "n_runs": 1179,

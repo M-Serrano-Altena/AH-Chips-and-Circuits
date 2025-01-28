@@ -8,7 +8,7 @@ from math import inf
 
 """
 In this file we run an experiment on A* input and the differences between BFS, BFS + Simulated Annealing and A_star rerouting.
-We have found that the optimal parameters for A* annealing are: start_temperature: 750, temperature_alpha: 0.99.
+We have found that the optimal parameters for A* input are: start_temperature: 750, temperature_alpha: 0.99.
 
 """
 
