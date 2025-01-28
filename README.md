@@ -1,7 +1,25 @@
+# Chips & Circuits
+
+## Repository Structure
+
+- **`data/`**: Contains CSV files with chip structures and netlists.  
+- **`results/`**: Stores experiment results, chip configurations, and plots, organized into:  
+  - `best_chip_configs/`  
+  - `best_chip_configs_candidates/`  
+  - `experiments/`  
+  - `latest/`  
+- **`src/`**: Contains all project code, split into:  
+  - `algorithms/`: Contains the code for the algorithms.  
+  - `classes/`: Defines core classes `Chip`, `Occupancy`, and `Wire`.  
+  - `experiments/`: Scripts for parameter research and routing comparisons.  
+  - `visualisation/`: Code for generating visual plots from experiment results.  
+- [main.py](./main.py): Entry point for running the project.
+- [requirements.txt](./requirements.txt): Lists Python dependencies.  
+- [state_space.md](./state_space.md): Documentation of the state space representation.  
 
 
 
-# Experiments 
+## Experiments 
 
 In this chapter, we present the experiments conducted to evaluate our **iterative random rerouting algorithm (IRRA)** under different initial chip states and rerouting strategies. These **initial states** can be generated either by a pseudo-random (PR) algorithm or by an A\* pathfinding approach, while the **rerouting methods** tested include a BFS-based method with one-step lookahead, a BFS-based method enhanced with simulated annealing, and a pure A\* rerouting method. These experiments are all conducted on chip_2 with the configuration of netlist_7, i.e. chip 2w7, to ensure consistency among all experiments.
 
@@ -17,11 +35,11 @@ Our findings revealed that while an **A\*-based initial state** produced solutio
 Finally, we applied a new A\* optimizer to the best candidates found by IRRA. Early results show that this optimizer can **further reduce costs** by rerouting multiple wires simultaneously—an avenue that remains promising for future investigation.
 
 
-## Parameter research
+### **Parameter research**
 
 First, to explore and refine the parameters for our **simulated annealing** approach, we used an **exponential temperature function** of the form:
 
- $$ \text{temperature}(i) = \text{start\_temperature} \cdot (\alpha)^i $$
+$$\text{temperature}(i) = \text{start\_temperature} \cdot \alpha^i$$
 
 This temperature is plugged into our acceptance probability function:
 ```python
@@ -55,11 +73,11 @@ In total, this produced 25 parameter combinations. We ran each combination for 2
 These findings suggest that for chips initialized via **A\***, a **moderate start temperature** with a **slower cooling rate** (alpha = 0.99) refines an already high-quality solution efficiently. In contrast, the **PR-based** approach benefits from a **higher start temperature** to escape poor initial placements, combined with a **more aggressive cooling rate** (alpha = 0.9). This is likely due to the relative higher cost of the PR initial state compared to the more refined A* starting state, thus promoting agressive early exploration, with a high cooling rate to prevent the formation of unsolvable dense wiring configurations. 
 
 <div align="center">
-  <img src="src/experiments/plots/output/chip2w7_annealing_PseudoRandom_heatmap.png" alt="PseudoRandom Heatmap" width="600">
-  <img src="src/experiments/plots/output/chip2w7_annealing_Astar_heatmap.png" alt="Astar Heatmap" width="600">
+  <img src="results/experiments/plots/chip2w7_irra_pr_sim_anneal_heatmap.png" alt="PseudoRandom Heatmap" width="600">
+  <img src="results/experiments/plots/chip2w7_irra_astar_sim_anneal_heatmap.png" alt="A* Heatmap" width="600">
 </div>
 
-## Method Comparison
+### **Method Comparison**
 
 In this section, we compare **six different methods** of using our IRRA: namely, combining **two possible initial states** (A\* or PR); with **three rerouting methods** (BFS , BFS + simulated annealing, and pure A\* rerouting). While our initial focus was to minimize the *overall cost* of the chip, we soon shifted to *short circuit count* as a more direct and interpretable measure of chip viability. *Cost* remains important when short circuit reaches zero, however in this current state *short circuit count* is still the main driving force of our cost function. To compare these six methods we used a runtime of one hour. 
 
@@ -80,16 +98,16 @@ However, using PR input is significantly worse in terms of efficiency. In additi
 
 We developed a simple method to estimate the absolute lowest possible cost. While this lower limit is unlikely to be reached, it provides a benchmark that cannot be undercut. The technique is straightforward: we sum all minimal distances for the required connections without considering any short circuits, thus determining the minimal cable length for a fully connected chip. For chip 2w7, our test subject, this limit is 600. Although our best solution so far costs 916, indicating room for improvement, it stands in stark contrast to the A* baseline’s median of 24390. Consequently, we can confidently conclude that all methods using A* as input are performing strongly.
 
-### Key takeaways:
+#### **Key takeaways:**
 
 1. **A\* Input** remains the **most efficient starting point overall** due to its quick generation of connected layouts. Combined with **A\* Rerouting**, it consistently produces **low short circuit counts** and often reaches zero.
 2. **PR Input** struggles with high short circuits and low efficiency under basic BFS rerouting, but **A\* Rerouting** can still salvage these chaotic layouts, leading to surprisingly strong results (median short circuit = 5, lowest = 0).
 3. **BFS + Simulated Annealing** shows improvements over plain BFS but cannot match the targeted pathfinding precision of **A\* Rerouting**, especially from a random initial state.
 
-WE conclude that an **A\*-based approach**—both in **initial chip generation** and in **rerouting**—tends to yield the most consistent results, while **PR input combined with A\* Rerouting** can also be a viable approach if the algorithm creating PR input can be improved considerably.
+We conclude that an **A\*-based approach**—both in **initial chip generation** and in **rerouting**—tends to yield the most consistent results, while **PR input combined with A\* Rerouting** can also be a viable approach if the algorithm creating PR input can be improved considerably.
 
 <div align="center-left">
-  <img src="src/experiments/plots/output/A_star_vs_PR_boxplot.png" alt="A* vs PR boxplot" width="600">
+  <img src="results/experiments/plots/chip2w7_irra_pr_vs_astar_boxplot.png" alt="A* vs PR boxplot" width="600">
 </div>
 
 One intriguing comparison is **A\* rerouting** applied to both **A\* and PR initial states**. We plotted a histogram to compare these two methods further. 
@@ -100,7 +118,7 @@ One intriguing comparison is **A\* rerouting** applied to both **A\* and PR init
 This additional noise for A\* input may stem from scenarios in which the initial A\* layout ends up with a relative high short circuit count, and the A\* rerouting process struggles to resolve them. By contrast, a more “chaotic” PR layout often presents more possible reroute options, giving the A\* rerouting method a greater chance to reduce collisions effectively and achieve low short circuit counts. Consequently, while A\* input typically yields efficient, near-collision-free routes at the outset, certain atypical runs can still produce many short circuits that prove difficult to remedy, leading to a broader spread in outcomes.
 
 <div align="left">
-  <img src="src/experiments/plots/output/A_star_routing_input_comparison.png" alt="A* vs PR for A* rerouting" width="600">
+  <img src="results\experiments\plots\chip2w7_irra_astar_vs_pr_input_astar_routing_comparison.png" alt="A* vs PR for A* rerouting" width="600">
 </div>
 
 Building on our conclusion that **A\* input** is likely the best path forward—especially as chip complexity grows: we conducted **10,000 runs** of each rerouting method using A\* as the initial state. This extensive experiment provided deeper insights into the distribution of short circuit counts:
@@ -119,17 +137,22 @@ Building on our conclusion that **A\* input** is likely the best path forward—
 Hence, while all three methods benefit from A\* input, A\* rerouting continues to yield the most low-short-circuit outcomes on average, solidifying its position as the preferred rerouting strategy.
 
 <div align="left">
-  <img src="src/experiments/plots/output/A_star_input_routing_comparison.png" alt="A* input; differences in rerouting" width="600">
+  <img src="results/experiments/plots/chip2w7_irra_astar_input_routing_comparison.png" alt="A* input; differences in rerouting" width="600">
 </div>
 
 
 [TODO: SECTION ON OPTIMIZATION?]
 
 
-## How to run the experiments
+### How to run the experiments
+In `main.py`, uncomment the experiment you want to run in the experiments section. You're free to change the parameters as well to change the test. To visualize the experiment, uncomment the corresponding visualisation function in the visualisation section (also in main.py). You may need to change the ***plot_save_base_dir*** argument if the json file from the experiment was saved in a different location.
 
-...
 
+## Acknowledgements
 
 Thanks to:
 https://algorithmafternoon.com/books/simulated_annealing/chapter02/
+
+## Authors
+- Titus van Zandwijk
+- Marc Serrano Altena
