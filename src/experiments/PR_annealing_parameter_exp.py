@@ -9,7 +9,7 @@ import json
 chip_id = 2
 net_id = 7
 
-# 1) we initialize the chip
+# initialize
 base_data_path = r"data/"
 chip0 = Chip(base_data_path, chip_id=chip_id, net_id=net_id, output_folder="output", padding=1)
 chip_og = copy.deepcopy(chip0)
@@ -21,7 +21,7 @@ results = []
 for temperature in temperature_candidates:
     for alpha in alpha_candidates:
         chip0 = chip_og
-        irra_irra = IRRA.IRRA_A_star(chip= chip0, iterations=250, intersection_limit= 0, acceptable_intersection=100, simulated_annealing= True, temperature_alpha= alpha, start_temperature= temperature)
+        irra_irra = IRRA.IRRA_PR(chip= chip0, iterations=250, intersection_limit= 0, acceptable_intersection=100, simulated_annealing= True, temperature_alpha= alpha, start_temperature= temperature)
         best_chip = irra_irra.run()
         all_costs = irra_irra.all_costs
         results.append({
@@ -34,7 +34,7 @@ for temperature in temperature_candidates:
                 "all_costs": all_costs
                 })
         
-output_file = 'output/parameter_research/chip2w7_annealing_Astar.json'
+output_file = 'output/parameter_research/chip2w7_annealing_PseudoRandom.json'
 with open(output_file, 'w') as file:
     json.dump(results, file, indent=4)
 
