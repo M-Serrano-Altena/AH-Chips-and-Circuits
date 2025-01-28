@@ -94,5 +94,9 @@ plot_name = "A_star_vs_PR_boxplot.png"
 plot_output_path = os.path.join(current_dir, plot_output_folder, plot_name)
 
 plt.title("Pseudo Random input vs A* input")
-sns.boxplot(x="Routing", y="Short Circuit Count", hue="Input Solution", palette=["m", "g"], data=results_df)
+sns.boxplot(x="Routing", y="Short Circuit Count", hue="Input Solution", palette=["m", "g"], data=results_df, width=0.75)
+
+plt.xlabel(xlabel="Routing", labelpad=17)
+plt.tight_layout()
+
 plt.savefig(plot_output_path)

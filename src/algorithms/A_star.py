@@ -73,9 +73,6 @@ class A_star(Greed):
         # we first sort the wires if needed
         self.get_wire_order(self.chip.wires)
 
-        # we start increasing the offset iteratively after having checked each wire
-        # note: it is impossible for the offset to be uneven and still have a valid connection, thus we check only for even values
-
         if self.chip.is_fully_connected():
             if self.print_log_messages:
                 print("All wires are connected")
@@ -182,7 +179,7 @@ class A_star_optimize(A_star):
         super().__init__(*args, **kwargs)
 
         self.current_cost = self.chip.calc_total_grid_cost()
-        self.best_wire_coords: list[list[Coords_3D]] = [wire.coords_wire_segments for wire in self.chip.wires]
+        self.best_wire_coords: list[list[Coords_3D]] = self.chip.wire_segment_list
         self.lowest_cost = self.current_cost
         self.previous_lowest_cost = self.current_cost
 
@@ -196,6 +193,7 @@ class A_star_optimize(A_star):
             start_temperature (int): Initial temperature for simulated annealing.
             alpha (int): Cooling rate for simulated annealing.
         """
+        print("Starting A* optimization...")
         self.start_temperature = start_temperature
         self.alpha = alpha
         for i in range(1, reroute_n_wires + 1):
@@ -316,11 +314,11 @@ class A_star_optimize(A_star):
         # keep current change
         else:
             if new_cost != self.current_cost:
-                print(f"new cost: {new_cost} | lowest cost = {self.lowest_cost}")
+                print(f"new cost: {new_cost} | previous lowest cost = {self.lowest_cost}")
             self.current_cost = new_cost
             if new_cost < self.lowest_cost:
                 self.lowest_cost = new_cost
-                self.best_wire_coords = [wire.coords_wire_segments for wire in self.chip.wires]
+                self.best_wire_coords = self.chip.wire_segment_list
 
         if self.temperature != 0:
             self.temperature = self.exponential_cooling(iterations=iteration, total_permutations=amount_of_permutations)

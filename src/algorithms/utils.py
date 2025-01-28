@@ -3,8 +3,10 @@ import json
 import os
 import re
 import csv
-import tempfile
-from typing import Any
+from typing import Any, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from src.classes.chip import Chip
 
 INTERSECTION_COST = 300
 COLLISION_COST = 1000000
@@ -73,21 +75,131 @@ def extract_algo_name_from_plot_title(plot_file_path: str, chip_id: int, net_id:
     return algorithm
     
 
-def clean_np_int64(input_file: str, output_file: str|None=None) -> None:
-    if output_file is None:
-        output_file = input_file
-
-    with open(input_file, 'r', encoding='utf-8') as infile, tempfile.NamedTemporaryFile('w', encoding='utf-8', newline='', delete=False) as tmpfile:
+def clean_np_int64(file_path: str) -> None:
+    # Read the entire file into memory
+    with open(file_path, 'r', encoding='utf-8') as infile:
         reader = csv.reader(infile)
-        writer = csv.writer(tmpfile)
+        rows = list(reader)
 
-        # Write the header
-        header = next(reader)
-        writer.writerow(header)
+    # Process the rows
+    cleaned_rows = []
+    for row in rows:
+        cleaned_row = [re.sub(r"np\.int64\((\d+)\)", r"\1", cell) for cell in row]
+        cleaned_rows.append(cleaned_row)
 
-        # Process each row
-        for row in reader:
-            cleaned_row = [re.sub(r"np\.int64\((\d+)\)", r"\1", cell) for cell in row]
-            writer.writerow(cleaned_row)
+    # Write the cleaned content back to the same file
+    with open(file_path, 'w', encoding='utf-8', newline='') as outfile:
+        writer = csv.writer(outfile)
+        writer.writerows(cleaned_rows)
 
-        os.replace(tmpfile.name, output_file)
+def run_algorithm(
+    chip: 'Chip', 
+    algorithm_name: str, 
+    routing_type: str="A*", 
+    shuffle_wires: bool=False, 
+    iterations: int=1, 
+    save_wire_config: bool=False,
+    plot: bool=False,
+    save_plot: bool=False
+) -> None:
+    from src.algorithms.A_star import A_star, A_star_optimize
+    from src.algorithms.greed import Greed, Greed_random
+    from src.algorithms.random_algo import Pseudo_random
+    from src.algorithms.IRRA import IRRA_PR, IRRA_A_star
+
+    algorithm_name_options = {
+        "Greed": Greed,
+        "Greed Random": Greed_random,
+        "Pseudo Random": Pseudo_random,
+        "A*": A_star,
+        "IRRA_PR": IRRA_PR,
+        "IRRA_A*": IRRA_A_star
+    }
+
+    routing_options = {
+        "BFS": [False, False],
+        "Simulated Annealing": [True, False],
+        "A*": [False, True]
+    }
+
+    if algorithm_name not in algorithm_name_options:
+        valid_options = "', '".join(algorithm_name_options.keys()).strip()
+        raise ValueError(f"Algorithm name is invalid. Options: '{valid_options}'")
+    
+    if routing_type not in routing_options:
+        valid_options = "', '".join(routing_options.keys()).strip()
+        raise ValueError(f"Routing type is invalid. Options: '{valid_options}'")
+
+    
+    if "IRRA" in algorithm_name:
+        simulated_annealing, A_star_rerouting = routing_options[routing_type]
+        algorithm = algorithm_name_options[algorithm_name](
+            chip, 
+            shuffle_wires=shuffle_wires, 
+            iterations=iterations, 
+            simulated_annealing=simulated_annealing, 
+            A_star_rerouting=A_star_rerouting,
+            acceptable_intersection=10
+        )
+    else:
+        algorithm = algorithm_name_options[algorithm_name](chip, shuffle_wires=shuffle_wires)
+    
+    if "IRRA" not in algorithm_name and iterations > 1:
+        algorithm.run_random_netlist_orders(iterations)
+    
+    else:
+        algorithm.run()
+
+    if "IRRA" in algorithm_name:
+        algorithm_name = algorithm_name + f" ({routing_type} routing)"
+    
+    if plot:
+        save_plot_name = None
+        if save_plot:
+            save_plot_name = f"layout_chip_{chip.chip_id}_net_{chip.net_id}.html"
+
+        chip.show_grid(save_plot_name, algorithm_name)
+
+
+    if save_wire_config:
+        save_csv_name = f"output_chip_{chip.chip_id}_net_{chip.net_id}.csv"
+        chip.save_output(save_csv_name)
+
+
+def optimize_chip(
+    chip: 'Chip', 
+    algo_used: str, 
+    reroute_n_wires: int=10, 
+    start_temperature: int=0, 
+    alpha: float=0.99, 
+    save_wire_config: bool=False, 
+    save_plot: bool=False, 
+    total_permutations_limit: int=500000, 
+    amount_of_random_iterations: int=20000
+) -> None:
+    
+    from src.algorithms.A_star import A_star_optimize
+
+    a_star_optimize = A_star_optimize(chip)
+    a_star_optimize.optimize(
+        reroute_n_wires=reroute_n_wires, 
+        start_temperature=start_temperature, 
+        alpha=alpha,
+        total_permutations_limit=total_permutations_limit,
+        amount_of_random_iterations=amount_of_random_iterations
+    )
+
+    if "+ A* optimize" not in algo_used and algo_used:
+        algorithm_new_name = f"{algo_used} + A* optimize"
+    else:
+        algorithm_new_name = algo_used
+
+    save_plot_name = None
+    if save_plot:
+        save_plot_name = f"optimized_layout_chip_{chip.chip_id}_net_{chip.net_id}.html"
+
+    chip.show_grid(save_plot_name, algorithm_new_name)
+
+    if save_wire_config:
+        save_csv_name = f"optimized_output_chip_{chip.chip_id}_net_{chip.net_id}.csv"
+        chip.save_output(save_csv_name)

@@ -14,9 +14,8 @@ class Greed:
     Optional: sort wires, first fills in the wires with the lowest manhatthan distance
     """
 
-    def __init__(self, chip: "Chip", max_offset: int = 6, allow_short_circuit: bool = False, sort_wires: bool = False, shuffle_wires: bool=False, print_log_messages: bool=False):
+    def __init__(self, chip: "Chip", max_offset: int = 6, allow_short_circuit: bool = False, sort_wires: bool = False, shuffle_wires: bool=False, print_log_messages: bool=False, **kwargs):
         self.chip = chip
-        self.chip_og = copy.deepcopy(self.chip)
         self.max_offset = max_offset
         self.allow_short_circuit = allow_short_circuit
         self.sort_wires = sort_wires
@@ -37,29 +36,27 @@ class Greed:
 
         return wires
     
-    def run_random_netlist_orders(self, iterations: int) -> Chip:
+    def run_random_netlist_orders(self, iterations: int) -> None:
         self.sort_wires = False
         self.shuffle_wires = True
         self.print_log_messages = False
+        best_wire_segment_list = self.chip.wire_segment_list
 
         lowest_cost = inf
         for i in range(iterations):
-            self.chip = copy.deepcopy(self.chip_og)
-            netlist = copy.deepcopy(self.chip_og.netlist)
-            random.shuffle(netlist)
-            self.chip.netlist = netlist
+            self.chip.reset_all_wires()
             self.run()
             cost = self.chip.calc_total_grid_cost()
             if cost < lowest_cost and self.chip.is_fully_connected():
                 lowest_cost = cost
-                best_chip = self.chip
+                best_wire_segment_list = self.chip.wire_segment_list
             
             print(f"{i}: cost = {cost}, lowest cost = {lowest_cost}")
             
-        return best_chip
+        self.chip.reset_all_wires()
+        self.chip.add_entire_wires(best_wire_segment_list)
 
     def run(self) -> None:
-
         # we first sort the wires if needed
         self.get_wire_order(self.chip.wires)
 
@@ -188,9 +185,9 @@ class Greed_random(Greed):
     if still no solution found, and allow_short_circuit = True, we connect ignoring short circuit
     """
 
-    def __init__(self, chip: "Chip", max_offset: int = 10, allow_short_circuit: bool = False, sort_wires: bool = False, random_seed: int|None=None):
+    def __init__(self, chip: "Chip", max_offset: int = 10, allow_short_circuit: bool = False, random_seed: int|None=None, **kwargs):
         # Use Greed class init
-        super().__init__(chip, max_offset, allow_short_circuit, sort_wires)
+        super().__init__(chip, max_offset, allow_short_circuit, sort_wires=False, shuffle_wires=True)
         
         # add a random seed if given
         if random_seed is not None:

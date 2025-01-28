@@ -97,6 +97,11 @@ class Chip:
         self.grid_range_z = (0, 7)
         self.grid_shape = (self.grid_range_x[1] - self.grid_range_x[0], self.grid_range_y[1] - self.grid_range_y[0], self.grid_range_z[1] - self.grid_range_z[0])
 
+
+    @property
+    def wire_segment_list(self) -> list[list[Coords_3D]]:
+        return [wire.coords_wire_segments for wire in self.wires]
+
     def add_entire_wire(self, wire_segment_list: list[Coords_3D]) -> None:
         """Create an entire wire from a wire segment list"""
         gate_1_coords = wire_segment_list[0]
@@ -384,10 +389,9 @@ class Chip:
     def save_output(self, output_filename="output") -> None:
         """Save a given grid configuration as a csv file"""
         netlist_tuple = [(gate1, gate2) for net_connection in self.netlist for gate1, gate2 in net_connection.items()]
-        wire_list = [wire.coords_wire_segments for wire in self.wires]
 
         # put netlist and wire sequences in a pandas dataframe
-        output_df = pd.DataFrame({"net": pd.Series(netlist_tuple), "wires": pd.Series(wire_list)})
+        output_df = pd.DataFrame({"net": pd.Series(netlist_tuple), "wires": pd.Series(self.chip.wire_segment_list)})
         
         # add footer row
         files_used = f"chip_{self.chip_id}_net_{self.net_id}"
@@ -406,7 +410,7 @@ class Chip:
         output_df.to_csv(output_filepath, index=False)
 
         # remove any np.int64 around coordinates
-        #clean_np_int64(output_filepath)
+        clean_np_int64(output_filepath)
 
 
 def load_chip_from_csv(path_to_csv: str, padding: int=1) -> Chip:
