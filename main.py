@@ -67,17 +67,17 @@ if __name__ == "__main__":
     # Run chosen algorithm with just command-line arguments
     #===========================================================================
 
-    # run_algorithm(
-    #     chip=chip,
-    #     algorithm_name=algorithm_name,
-    #     routing_type=routing_type,
-    #     shuffle_wires=shuffle_wires,
-    #     iterations=iterations,
-    #     use_plot=use_plot and not optimize,
-    #     save_plot=save_plot,
-    #     # don't save wire config if we're optimizing
-    #     save_wire_config=save_config if not optimize else False, 
-    # )
+    run_algorithm(
+        chip=chip,
+        algorithm_name=algorithm_name,
+        routing_type=routing_type,
+        shuffle_wires=shuffle_wires,
+        iterations=iterations,
+        use_plot=use_plot and not optimize,
+        save_plot=save_plot,
+        # don't save wire config if we're optimizing
+        save_wire_config=save_config if not optimize else False, 
+    )
 
     #===========================================================================
     # Optimize chip after running algorithm
@@ -129,8 +129,8 @@ if __name__ == "__main__":
     # Note: this algorithm may take a minute to generate a solution
     # for a harder chip
 
-    used_algo_name = "Pseudo Random"
-    pseudo_random_algo = Pseudo_random(chip=chip, allow_short_circuit=True)
+    # used_algo_name = "Pseudo Random"
+    # pseudo_random_algo = Pseudo_random(chip=chip, allow_short_circuit=True)
 
     ## choose 1 of the following 2 options
     # pseudo_random_algo.run()
@@ -354,14 +354,14 @@ if __name__ == "__main__":
     # )
 
     # ------------------- Parameter Annealing heatmap ----------------------------
-    create_sim_anneal_heatmap(
-        json_sim_anneal_data_filepath="results/experiments/parameter_research/chip2w7_annealing_pr.json",
-        solution_input="PR",
-        chip_id=None,
-        net_id=None,
-        plot_save_name=None,
-        plot_save_base_dir="results/latest/experiment_plots"
-    )
+    # create_sim_anneal_heatmap(
+    #     json_sim_anneal_data_filepath="results/experiments/parameter_research/chip2w7_annealing_pr.json",
+    #     solution_input="PR",
+    #     chip_id=None,
+    #     net_id=None,
+    #     plot_save_name=None,
+    #     plot_save_base_dir="results/latest/experiment_plots"
+    # )
 
     # ------------------- Input Comparison Histogram ----------------------------
     # create_input_comparison_hist(

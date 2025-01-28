@@ -76,6 +76,5 @@ def create_sim_anneal_heatmap(
 
     output_image_path = os.path.join(plot_save_base_dir, plot_save_name)
 
-    print(output_image_path)
     # save figure
     plt.savefig(output_image_path, dpi=300)
