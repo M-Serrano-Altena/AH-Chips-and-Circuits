@@ -1,0 +1,277 @@
+[
+    {
+        "temperature": 500,
+        "alpha": 0.9,
+        "mean_cost": 12598,
+        "median_cost": 12598,
+        "stdev_cost": 0,
+        "best_cost found": 12598,
+        "all_costs": [
+            12598
+        ]
+    },
+    {
+        "temperature": 500,
+        "alpha": 0.925,
+        "mean_cost": 10526,
+        "median_cost": 10526,
+        "stdev_cost": 0,
+        "best_cost found": 10526,
+        "all_costs": [
+            10526
+        ]
+    },
+    {
+        "temperature": 500,
+        "alpha": 0.95,
+        "mean_cost": 8134,
+        "median_cost": 8134,
+        "stdev_cost": 0,
+        "best_cost found": 8134,
+        "all_costs": [
+            8134
+        ]
+    },
+    {
+        "temperature": 500,
+        "alpha": 0.975,
+        "mean_cost": 6350,
+        "median_cost": 6350,
+        "stdev_cost": 0,
+        "best_cost found": 6350,
+        "all_costs": [
+            6350
+        ]
+    },
+    {
+        "temperature": 500,
+        "alpha": 0.99,
+        "mean_cost": 5148,
+        "median_cost": 5148,
+        "stdev_cost": 0,
+        "best_cost found": 5148,
+        "all_costs": [
+            5148
+        ]
+    },
+    {
+        "temperature": 750,
+        "alpha": 0.9,
+        "mean_cost": 5146,
+        "median_cost": 5146,
+        "stdev_cost": 0,
+        "best_cost found": 5146,
+        "all_costs": [
+            5146
+        ]
+    },
+    {
+        "temperature": 750,
+        "alpha": 0.925,
+        "mean_cost": 5146,
+        "median_cost": 5146,
+        "stdev_cost": 0,
+        "best_cost found": 5146,
+        "all_costs": [
+            5146
+        ]
+    },
+    {
+        "temperature": 750,
+        "alpha": 0.95,
+        "mean_cost": 5442,
+        "median_cost": 5442,
+        "stdev_cost": 0,
+        "best_cost found": 5442,
+        "all_costs": [
+            5442
+        ]
+    },
+    {
+        "temperature": 750,
+        "alpha": 0.975,
+        "mean_cost": 5442,
+        "median_cost": 5442,
+        "stdev_cost": 0,
+        "best_cost found": 5442,
+        "all_costs": [
+            5442
+        ]
+    },
+    {
+        "temperature": 750,
+        "alpha": 0.99,
+        "mean_cost": 6332,
+        "median_cost": 6332,
+        "stdev_cost": 0,
+        "best_cost found": 6332,
+        "all_costs": [
+            6332
+        ]
+    },
+    {
+        "temperature": 1000,
+        "alpha": 0.9,
+        "mean_cost": 6330,
+        "median_cost": 6330,
+        "stdev_cost": 0,
+        "best_cost found": 6330,
+        "all_costs": [
+            6330
+        ]
+    },
+    {
+        "temperature": 1000,
+        "alpha": 0.925,
+        "mean_cost": 6330,
+        "median_cost": 6330,
+        "stdev_cost": 0,
+        "best_cost found": 6330,
+        "all_costs": [
+            6330
+        ]
+    },
+    {
+        "temperature": 1000,
+        "alpha": 0.95,
+        "mean_cost": 6330,
+        "median_cost": 6330,
+        "stdev_cost": 0,
+        "best_cost found": 6330,
+        "all_costs": [
+            6330
+        ]
+    },
+    {
+        "temperature": 1000,
+        "alpha": 0.975,
+        "mean_cost": 6330,
+        "median_cost": 6330,
+        "stdev_cost": 0,
+        "best_cost found": 6330,
+        "all_costs": [
+            6330
+        ]
+    },
+    {
+        "temperature": 1000,
+        "alpha": 0.99,
+        "mean_cost": 6330,
+        "median_cost": 6330,
+        "stdev_cost": 0,
+        "best_cost found": 6330,
+        "all_costs": [
+            6330
+        ]
+    },
+    {
+        "temperature": 1500,
+        "alpha": 0.9,
+        "mean_cost": 6330,
+        "median_cost": 6330,
+        "stdev_cost": 0,
+        "best_cost found": 6330,
+        "all_costs": [
+            6330
+        ]
+    },
+    {
+        "temperature": 1500,
+        "alpha": 0.925,
+        "mean_cost": 6330,
+        "median_cost": 6330,
+        "stdev_cost": 0,
+        "best_cost found": 6330,
+        "all_costs": [
+            6330
+        ]
+    },
+    {
+        "temperature": 1500,
+        "alpha": 0.95,
+        "mean_cost": 6330,
+        "median_cost": 6330,
+        "stdev_cost": 0,
+        "best_cost found": 6330,
+        "all_costs": [
+            6330
+        ]
+    },
+    {
+        "temperature": 1500,
+        "alpha": 0.975,
+        "mean_cost": 6330,
+        "median_cost": 6330,
+        "stdev_cost": 0,
+        "best_cost found": 6330,
+        "all_costs": [
+            6330
+        ]
+    },
+    {
+        "temperature": 1500,
+        "alpha": 0.99,
+        "mean_cost": 6330,
+        "median_cost": 6330,
+        "stdev_cost": 0,
+        "best_cost found": 6330,
+        "all_costs": [
+            6330
+        ]
+    },
+    {
+        "temperature": 2000,
+        "alpha": 0.9,
+        "mean_cost": 6330,
+        "median_cost": 6330,
+        "stdev_cost": 0,
+        "best_cost found": 6330,
+        "all_costs": [
+            6330
+        ]
+    },
+    {
+        "temperature": 2000,
+        "alpha": 0.925,
+        "mean_cost": 5134,
+        "median_cost": 5134,
+        "stdev_cost": 0,
+        "best_cost found": 5134,
+        "all_costs": [
+            5134
+        ]
+    },
+    {
+        "temperature": 2000,
+        "alpha": 0.95,
+        "mean_cost": 4834,
+        "median_cost": 4834,
+        "stdev_cost": 0,
+        "best_cost found": 4834,
+        "all_costs": [
+            4834
+        ]
+    },
+    {
+        "temperature": 2000,
+        "alpha": 0.975,
+        "mean_cost": 4834,
+        "median_cost": 4834,
+        "stdev_cost": 0,
+        "best_cost found": 4834,
+        "all_costs": [
+            4834
+        ]
+    },
+    {
+        "temperature": 2000,
+        "alpha": 0.99,
+        "mean_cost": 4834,
+        "median_cost": 4834,
+        "stdev_cost": 0,
+        "best_cost found": 4834,
+        "all_costs": [
+            4834
+        ]
+    }
+]

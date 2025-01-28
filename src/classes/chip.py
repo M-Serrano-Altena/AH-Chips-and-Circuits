@@ -27,7 +27,7 @@ def convert_to_matrix_coords(coords, matrix_y_size):
     return matrix_y_size - 1 - y_coord, x_coord
 
 class Chip:
-    def __init__(self, base_data_path: str=r"data/", chip_id: int=0, net_id: int=1, padding: int=1, output_folder="output/"):
+    def __init__(self, base_data_path: str=r"data/", chip_id: int=0, net_id: int=1, padding: int=1, output_folder="results/latest"):
         self.chip_id = chip_id
         self.net_id = net_id
         self.output_folder = output_folder
@@ -381,7 +381,7 @@ class Chip:
         # save the file as an html file
         if image_filename is not None:
             image_filename = add_missing_extension(image_filename, ".html")
-            image_filepath = os.path.join(self.output_folder, "img", image_filename)
+            image_filepath = os.path.join(self.output_folder, "chip_config_plots", image_filename)
             pio.write_html(fig, file=image_filepath, config=config)
 
 
@@ -391,7 +391,7 @@ class Chip:
         netlist_tuple = [(gate1, gate2) for net_connection in self.netlist for gate1, gate2 in net_connection.items()]
 
         # put netlist and wire sequences in a pandas dataframe
-        output_df = pd.DataFrame({"net": pd.Series(netlist_tuple), "wires": pd.Series(self.chip.wire_segment_list)})
+        output_df = pd.DataFrame({"net": pd.Series(netlist_tuple), "wires": pd.Series(self.wire_segment_list)})
         
         # add footer row
         files_used = f"chip_{self.chip_id}_net_{self.net_id}"
@@ -400,7 +400,7 @@ class Chip:
         output_df.loc[len(output_df)] = [files_used, total_cost]
 
         output_filename = add_missing_extension(output_filename, ".csv")
-        output_filepath = os.path.join(self.output_folder, "csv", output_filename)
+        output_filepath = os.path.join(self.output_folder, "chip_config_csv", output_filename)
 
         # remove whitespace for check50
         output_df = output_df.map(lambda x: str(x).replace(" ", ""))

@@ -19,7 +19,7 @@ class IRRA_PR(Pseudo_random):
     The IRRA algorithm starts off in a random configuration after which it will try to reroute the wiring which will cause a short circuit. 
     The algorithm will start off in another random configuration after there are no short circuits left, or after no short circuits are able to be filtered out.
     Optional: put a limit on the goal of working out the intersections, making the algorithm more efficient
-    Optional: put a limit on the initial intersection amount (l * GATE) checking only random configurations with a low intersection amount
+    Optional: put a limit on the initial intersection amount, checking only random configurations with a lower intersection amount
     """
 
     def __init__(
@@ -27,7 +27,7 @@ class IRRA_PR(Pseudo_random):
         chip: "Chip",
         iterations: int = 100,
         intersection_limit: int = 0,
-        acceptable_intersection: int = 10,
+        acceptable_intersection: int = 3000,
         early_stopping_patience: int = 999999,
         max_offset: int = 58,
         rerouting_offset: int = 58,
@@ -95,12 +95,13 @@ class IRRA_PR(Pseudo_random):
             if new_solution_iteration != 1:
                 self.chip.reset_all_wires()
 
+
             # 2) let parent produce a random wiring
             super().run()
 
             # repeat this step until we find a configuration that is fully connected 
             # optional) repeat this step until we have wiring that has acceptable intersection amount 
-            while (not self.chip.is_fully_connected() or self.chip.get_wire_intersect_amount() >= (self.acceptable_intersection * self.gate_amount)):
+            while (not self.chip.is_fully_connected() or self.chip.get_wire_intersect_amount() >= self.acceptable_intersection):
                 self.chip.reset_all_wires()
                 super().run()
                 print(f"{algo_name_input} Finding configuration: {improvement_iteration}, intersections: {self.chip.get_wire_intersect_amount()}")
@@ -148,9 +149,10 @@ class IRRA_PR(Pseudo_random):
                 print(f"{algo_name_routing} Intersection limit reached or better. Stopping early.")
                 break
         
-        self.chip.reset_all_wires()
-        self.chip.add_entire_wires(self.best_wire_segment_list)
+        self.restore_best_solution()
         print(f"{algo_name_routing} Done. Best cost={self.best_cost}, Intersections={self.chip.get_wire_intersect_amount()}")
+
+        return self.chip
 
 
     def intersections_rerouting(self) -> None:
@@ -383,12 +385,8 @@ class IRRA_PR(Pseudo_random):
         """
         After all iterations, put the chip back to the best configuration found.
         """
-        if not self.best_chip:
-            print("[IRRA] No valid solution found better than initial. Keeping current layout.")
-            return
-
-        # clear chip to insert optimal layout found
-        self.chip = copy.deepcopy(self.best_chip)
+        self.chip.reset_all_wires()
+        self.chip.add_entire_wires(self.best_wire_segment_list)
 
     def greed_optimize(self) -> None:
         """
@@ -557,7 +555,7 @@ class IRRA_A_star(A_star, IRRA_PR):
 
             # repeat this step until we find a configuration that is fully connected 
             # optional) repeat this step until we have wiring that has acceptable intersection amount 
-            while (self.chip.get_wire_intersect_amount() >= (self.acceptable_intersection * self.gate_amount)) or not self.chip.is_fully_connected:
+            while (self.chip.get_wire_intersect_amount() >= self.acceptable_intersection) or not self.chip.is_fully_connected:
                 self.chip.reset_all_wires()
                 super().run()
                 print(f"Finding configuration: {improvement_iteration}, intersections: {self.chip.get_wire_intersect_amount()}")
@@ -591,7 +589,7 @@ class IRRA_A_star(A_star, IRRA_PR):
 
             if current_cost < self.best_cost:
                 self.best_cost = current_cost
-                self.best_chip = copy.deepcopy(self.chip)
+                self.best_wire_segment_list = self.chip.wire_segment_list
                 optimal_solution_counter = 0
             
             # we encounter the same cost, perhaps optimal reached, add 1 optimal iteration
@@ -603,5 +601,6 @@ class IRRA_A_star(A_star, IRRA_PR):
                 print(f"{algo_name_routing} Intersection limit reached or better. Stopping early.")
                 break
 
-        print(f"{algo_name_routing} Done. Best cost={self.best_cost}, Intersections={self.best_chip.get_wire_intersect_amount()}")
-        return self.best_chip
+        self.restore_best_solution()
+        print(f"{algo_name_routing} Done. Best cost={self.best_cost}, Intersections={self.chip.get_wire_intersect_amount()}")
+        return self.chip

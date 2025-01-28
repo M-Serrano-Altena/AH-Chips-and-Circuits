@@ -185,7 +185,7 @@ class Greed_random(Greed):
     if still no solution found, and allow_short_circuit = True, we connect ignoring short circuit
     """
 
-    def __init__(self, chip: "Chip", max_offset: int = 10, allow_short_circuit: bool = False, random_seed: int|None=None, **kwargs):
+    def __init__(self, chip: "Chip", max_offset: int=20, allow_short_circuit: bool = False, random_seed: int|None=None, **kwargs):
         # Use Greed class init
         super().__init__(chip, max_offset, allow_short_circuit, sort_wires=False, shuffle_wires=True)
         

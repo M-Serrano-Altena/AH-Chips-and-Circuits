@@ -92,6 +92,24 @@ def clean_np_int64(file_path: str) -> None:
         writer = csv.writer(outfile)
         writer.writerows(cleaned_rows)
 
+def extract_chip_id_net_id_from_file_name(file_path: str) -> tuple[int, int]:
+    """Extracts the chip_id and net_id from a file path"""
+    possible_patterns = [
+        r"c(\d+)w(\d+)",
+        r"chip(\d+)w(\d+)",
+        r"chip(\d+)_net(\d+)"
+    ]
+
+    for pattern in possible_patterns:
+        match = re.search(pattern, file_path)
+        if match:
+            chip_id = int(match.group(1))
+            net_id = int(match.group(2))
+            return chip_id, net_id
+    
+    raise ValueError("Could not extract chip_id and net_id from file path")
+
+
 def run_algorithm(
     chip: 'Chip', 
     algorithm_name: str, 
@@ -99,18 +117,22 @@ def run_algorithm(
     shuffle_wires: bool=False, 
     iterations: int=1, 
     save_wire_config: bool=False,
-    plot: bool=False,
+    use_plot: bool=False,
     save_plot: bool=False
 ) -> None:
     from src.algorithms.A_star import A_star, A_star_optimize
     from src.algorithms.greed import Greed, Greed_random
-    from src.algorithms.random_algo import Pseudo_random
+    from src.algorithms.random_algo import Pseudo_random, True_random
     from src.algorithms.IRRA import IRRA_PR, IRRA_A_star
 
     algorithm_name_options = {
         "Greed": Greed,
         "Greed Random": Greed_random,
+        "GR": Greed_random,
         "Pseudo Random": Pseudo_random,
+        "PR": Pseudo_random,
+        "True Random": True_random,
+        "TR": True_random,
         "A*": A_star,
         "IRRA_PR": IRRA_PR,
         "IRRA_A*": IRRA_A_star
@@ -139,7 +161,7 @@ def run_algorithm(
             iterations=iterations, 
             simulated_annealing=simulated_annealing, 
             A_star_rerouting=A_star_rerouting,
-            acceptable_intersection=10
+            acceptable_intersection=500
         )
     else:
         algorithm = algorithm_name_options[algorithm_name](chip, shuffle_wires=shuffle_wires)
@@ -153,7 +175,7 @@ def run_algorithm(
     if "IRRA" in algorithm_name:
         algorithm_name = algorithm_name + f" ({routing_type} routing)"
     
-    if plot:
+    if use_plot:
         save_plot_name = None
         if save_plot:
             save_plot_name = f"layout_chip_{chip.chip_id}_net_{chip.net_id}.html"
@@ -172,7 +194,8 @@ def optimize_chip(
     reroute_n_wires: int=10, 
     start_temperature: int=0, 
     alpha: float=0.99, 
-    save_wire_config: bool=False, 
+    save_wire_config: bool=False,
+    use_plot: bool=True, 
     save_plot: bool=False, 
     total_permutations_limit: int=500000, 
     amount_of_random_iterations: int=20000
@@ -194,11 +217,12 @@ def optimize_chip(
     else:
         algorithm_new_name = algo_used
 
-    save_plot_name = None
-    if save_plot:
-        save_plot_name = f"optimized_layout_chip_{chip.chip_id}_net_{chip.net_id}.html"
+    if use_plot:
+        save_plot_name = None
+        if save_plot:
+            save_plot_name = f"optimized_layout_chip_{chip.chip_id}_net_{chip.net_id}.html"
 
-    chip.show_grid(save_plot_name, algorithm_new_name)
+        chip.show_grid(save_plot_name, algorithm_new_name)
 
     if save_wire_config:
         save_csv_name = f"optimized_output_chip_{chip.chip_id}_net_{chip.net_id}.csv"
