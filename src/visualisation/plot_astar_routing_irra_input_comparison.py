@@ -12,6 +12,31 @@ def create_input_comparison_hist(
     plot_save_name: str|None=None, 
     plot_save_base_dir: str="results/latest/experiment_plots"
 ) -> None:
+    """
+    Creates and saves a histogram comparing the number of short circuits between the 
+    Pseudo Random (PR) and A* input methods for the IRRA algorithm,
+    using the specified routing type. 
+
+    The histogram displays the frequency of short circuits encountered for both input methods 
+    across a routing experiment for the specified chip and netlist. The resulting plot is saved 
+    as a PNG image.
+
+    Args:
+        json_pr_path (str): Path to the JSON file containing Pseudo Random input results.
+        json_astar_path (str): Path to the JSON file containing A* input results.
+        routing_type (str): The routing type used in the experiment, must be one of "BFS", "Simulated Annealing", or "A*".
+        chip_id (int, optional): The chip ID for the routing experiment. If not provided, it is extracted from the file name.
+        net_id (int, optional): The netlist ID for the routing experiment. If not provided, it is extracted from the file name.
+        plot_save_name (str, optional): The name of the file to save the histogram plot as. If not provided, a default name is used.
+        plot_save_base_dir (str, optional): The directory where the histogram plot will be saved. Defaults to "results/latest/experiment_plots".
+
+    Raises:
+        ValueError: If the `routing_type` is not one of "BFS", "Simulated Annealing", or "A*".
+
+    Returns:
+        None: The function does not return any values. It saves the histogram plot as a PNG file in the specified directory.
+    """
+
     if chip_id is None or net_id is None:
         chip_id, net_id = extract_chip_id_net_id_from_file_name(json_pr_path)
 
@@ -66,5 +91,7 @@ def create_input_comparison_hist(
     if plot_save_name is None:
         plot_save_name = f"chip{chip_id}w{net_id}_irra_astar_vs_pr_input_{routing_type}_routing_comparison.png"
 
+    os.makedirs(plot_save_base_dir, exist_ok=True)
     save_path = os.path.join(plot_save_base_dir, plot_save_name)
     plt.savefig(save_path)
+    plt.clf()

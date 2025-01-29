@@ -17,8 +17,38 @@ def offset_experiment(
     json_output_save_name: str | None = None,
     base_output_dir: str = "results/latest/parameter_research/"
 ) -> None:
-    
+    """
+    Runs an experiment to test various offset values. It runs the IRRA algorithm with
+    a specified solution as input (either "PR" or "A*") with simulated annealing
+    and calculates the total grid cost and short circuit count for each offset.
+    Results are saved to a JSON file.
+
+    Args:
+        chip_id (int): The ID of the chip to experiment with.
+        net_id (int): The ID of the netlist for the chip.
+        offsets (Iterable[int]): A list or iterable of offset values to test.
+        solution_input (str): The input solution to use for the IRRA algorithm, either "PR" or "A*" (default is "PR").
+        time_in_seconds_per_offset (int): Maximum time in seconds to run per offset (default is 300 seconds).
+        iterations_per_offset (int): Maximum number of iterations to run per offset (default is 0, meaning infinite 
+                                      runs until time limit is reached. If provided, maximum time is ignored).
+        json_output_save_name (str | None): The filename to save the JSON output (default is None, which generates 
+                                            a filename based on chip and net IDs).
+        base_output_dir (str): The base directory where results will be saved (default is "results/latest/parameter_research/").
+
+    Returns:
+        None: The function does not return any values. It saves the results in a JSON file.        
+
+    Raises:
+        ValueError: If the `solution_input` is not "PR" or "A*".
+    """
+
     def continue_with_runs() -> bool:
+        """
+        Determines whether to continue with the current offset based on the number of iterations or the time elapsed.
+
+        Returns:
+            bool: True if more runs are allowed based on the time or iteration conditions, False otherwise.
+        """
         if iterations_per_offset != 0:
             return n_runs < iterations_per_offset
         
@@ -81,5 +111,6 @@ def offset_experiment(
     if json_output_save_name is None:
         json_output_save_name = f"chip{chip_id}w{net_id}_irra_{solution_input}_offset_experiment.json"
 
+    os.makedirs(base_output_dir, exist_ok=True)
     json_output_save_path = os.path.join(base_output_dir, json_output_save_name)
     save_object_to_json_file(results, json_output_save_path)

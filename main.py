@@ -162,7 +162,7 @@ if __name__ == "__main__":
 
     ## choose 1 of the following 2 options
     # A_star_algo.run()
-    # A_star_algo.run_random_netlist_orders(iterations=100)
+    # # A_star_algo.run_random_netlist_orders(iterations=100)
 
     # chip.show_grid(image_filename=None, algorithm_name=used_algo_name)
     # chip.save_output("output.csv")
@@ -318,11 +318,11 @@ if __name__ == "__main__":
     # offset_experiment(
     #     chip_id=chip_id,
     #     net_id=net_id,
-    #     offsets=range(0, 100, 2),
+    #     offsets=range(40, 61, 2),
     #     solution_input="A*",
     #     iterations_per_offset=0,
     #     time_in_seconds_per_offset=1,
-    #     json_output_save_name="test.json",
+    #     json_output_save_name=None,
     #     base_output_dir="results/latest/parameter_research/"
     # )
 
@@ -330,7 +330,7 @@ if __name__ == "__main__":
     # algorithm_solution_distribution(
     #     chip_id=chip_id,
     #     net_id=net_id,
-    #     algorithm_name="PR",
+    #     algorithm_name="A*",
     #     iterations=10,
     #     json_output_save_name=None,
     #     base_output_dir="results/latest/solution_distributions/"

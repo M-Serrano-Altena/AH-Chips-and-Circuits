@@ -7,9 +7,25 @@ def algorithm_solution_distribution(
     chip_id: int, 
     net_id: int, 
     iterations: int, 
-    json_output_save_name: str, 
+    json_output_save_name: str|None=None, 
     base_output_dir: str="results/latest/solution_distributions"
 ) -> None:
+    """
+    Runs a specified algorithm for a given number of iterations, collecting the total grid cost
+    and wire intersection count for each iteration. The results are saved in a JSON file.
+
+    Args:
+        algorithm_name (str): The name of the algorithm to be used (e.g., 'A*', 'PR', 'Greedy', etc.).
+        chip_id (int): The chip ID to be used.
+        net_id (int): The netlist ID to be used.
+        iterations (int): The number of iterations to run the experiment.
+        json_output_save_name (str, optional): The name of the output JSON file to save results. if None, a default name is used. Defaults to None.
+        base_output_dir (str, optional): The directory to save the output results. Defaults to "results/latest/solution_distributions".
+
+    Returns:
+        None: The function does not return any values. It saves the results in a JSON file.
+    """
+
     total_costs = []
     total_intersections = []
 
@@ -51,5 +67,6 @@ def algorithm_solution_distribution(
     if json_output_save_name is None:
         json_output_save_name = f"chip{chip_id}w{net_id}_{algorithm_name}_solution_distrib.json"
 
+    os.makedirs(base_output_dir, exist_ok=True)
     save_path = os.path.join(base_output_dir, json_output_save_name)
     save_object_to_json_file(results, save_path)

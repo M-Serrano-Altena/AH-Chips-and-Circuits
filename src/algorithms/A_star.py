@@ -12,7 +12,7 @@ if TYPE_CHECKING:
 
 class A_star(Greed):
     """
-    A* pathfinding algorithm implementation for routing wires in a chip
+    A* pathfinding algorithm implementation for routing wires in a chip.
     """
 
     def __init__(self, *args, **kwargs):
@@ -23,13 +23,25 @@ class A_star(Greed):
 
     def get_existing_path_cost(self, path: list[Coords_3D]) -> int:
         """
-        Calculate the cost of the existing path
+        Compute the cost of an existing path based on its length.
+
+        Args:
+            path (list[Coords_3D]): The list of coordinates forming the path.
+
+        Returns:
+            int: The cost of the path, equal to the number of segments (length - 1).
         """
         return len(path) - 1
     
     def get_extra_wire_cost(self, path: list[Coords_3D]) -> int:
         """
-        Calculate the extra cost for the current node due to intersections or collisions
+        Determine additional costs incurred by a wire segment due to intersections or collisions.
+
+        Args:
+            path (list[Coords_3D]): The list of coordinates forming the wire path.
+
+        Returns:
+            int: The additional cost based on intersections and collisions.
         """
 
         # gate can't intersect or have a collision
@@ -54,14 +66,19 @@ class A_star(Greed):
     
     def heuristic_function(self, path: list[Coords_3D], goal_coords: Coords_3D) -> int:
         """
-        Calculate the heuristic cost for the current node
-        
+        Compute the heuristic cost for A* pathfinding.
+
+        The heuristic cost includes:
+        - Manhattan distance to the goal.
+        - Existing path cost.
+        - Extra cost due to intersections and collisions.
+
         Args:
-            current_node (Node): The current node
-            goal_coords (Coords_3D): The goal coordinates
-        
+            path (list[Coords_3D]): The current path.
+            goal_coords (Coords_3D): The coordinates of the goal.
+
         Returns:
-            int: The total heuristic cost including: manhattan distance, path cost, and extra cost
+            int: The total heuristic cost.
         """
         manhattan_dist = manhattan_distance(path[-1], goal_coords)
         exising_path_cost = self.get_existing_path_cost(path)
@@ -69,7 +86,13 @@ class A_star(Greed):
         return manhattan_dist + exising_path_cost + extra_cost
         
     def run(self) -> None:
+        """
+        Execute the A* algorithm to connect all wires in the chip.
 
+        The function iterates through all wires, attempting to find the shortest
+        valid route using the A* algorithm. If a path is found, it updates the
+        chip's occupancy grid and wire configurations.
+        """
         # we first sort the wires if needed
         self.get_wire_order(self.chip.wires)
 
@@ -116,10 +139,26 @@ class A_star(Greed):
 
     
 
-    def shortest_cable(self, 
-        chip: 'Chip', start_coords: Coords_3D, end_coords: Coords_3D, 
-        offset: int=0, allow_short_circuit: bool=True) -> list[Coords_3D]|None:
+    def shortest_cable(
+        self, 
+        chip: 'Chip', 
+        start_coords: Coords_3D, 
+        end_coords: Coords_3D,
+        allow_short_circuit: bool = True,
+        **kwargs
+    ) -> list[Coords_3D] | None:
+        """
+        Find the shortest cable route between two points using A* search.
 
+        Args:
+            chip (Chip): The chip instance containing wire and occupancy information.
+            start_coords (Coords_3D): The starting coordinates of the wire.
+            end_coords (Coords_3D): The destination coordinates of the wire.
+            allow_short_circuit (bool, optional): Whether to allow wires to pass through other wires. Defaults to True.
+
+        Returns:
+            list[Coords_3D] | None: The computed shortest path or None if no valid path exists.
+        """
         self.frontier = []
 
         path = [start_coords]
@@ -169,31 +208,43 @@ class A_star(Greed):
 
 class A_star_optimize(A_star):
     """
-    An algorithm using A* to optimize a given chip configuration.
-    
-    This algorithm optimizes a completed chip by reducing wire costs. 
-    It removes and reroutes multiple wires simultaneously to achieve a lower cost.
+    A variant of the A* algorithm designed to optimize wire placement in a completed chip.
+
+    This algorithm iteratively reroutes existing wires by temporarily removing them
+    to minimize total cost.
     """
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-
+        self.temperature = 0
         self.current_cost = self.chip.calc_total_grid_cost()
         self.best_wire_coords: list[list[Coords_3D]] = self.chip.wire_segment_list
         self.lowest_cost = self.current_cost
         self.previous_lowest_cost = self.current_cost
 
-    def optimize(self, reroute_n_wires: int, start_temperature: int=0, alpha: int=0.99, total_permutations_limit: int=500000, amount_of_random_iterations: int=20000) -> None:
+    def optimize(
+        self, 
+        reroute_n_wires: int, 
+        start_temperature: int = 0, 
+        alpha: float = 0.99, 
+        total_permutations_limit: int = 500000, 
+        amount_of_random_iterations: int = 20000
+    ) -> None:
         """
-        Optimize the chip by rerouting a specified number of wires with optional
-        simulated annealing parameters for temperature and cooling rate.
+        Optimize wire routing by rerouting multiple wires simultaneously.
+
+        This method applies an optimization process to reduce total wire cost,
+        utilizing simulated annealing if needed.
 
         Args:
-            reroute_n_wires (int): Number of wires to reroute simultaneously.
-            start_temperature (int): Initial temperature for simulated annealing.
-            alpha (int): Cooling rate for simulated annealing.
+            reroute_n_wires (int): The (max) number of wires to reroute simultaneously.
+            start_temperature (int, optional): Initial temperature for simulated annealing. Defaults to 0.
+            alpha (float, optional): Cooling rate for simulated annealing. Defaults to 0.99.
+            total_permutations_limit (int, optional): Maximum number of wire permutations before switching to random search. Defaults to 500000.
+            amount_of_random_iterations (int, optional): Number of random permutations to try if permutation limit is exceeded. Defaults to 20000.
         """
         print("Starting A* optimization...")
+        print(self.chip.is_fully_connected())
         self.start_temperature = start_temperature
         self.alpha = alpha
         for i in range(1, reroute_n_wires + 1):
@@ -225,14 +276,17 @@ class A_star_optimize(A_star):
     
     def optimize_n_wires_all_permutations(self, amount_of_wires: int, switch_equal_configs: bool=False) -> bool:
         """
-        Optimize a specific number of wires by rerouting them to reduce cost or intersections.
+        Optimize wire routing by testing all possible wire permutations.
+
+        This method systematically explores all possible rerouting options
+        for a given number of wires and selects the configuration that minimizes cost.
 
         Args:
-            amount_of_wires (int): Number of wires to optimize in a single pass.
-            switch_equal_configs (bool): If True, allow switching configurations with equal costs.
+            amount_of_wires (int): The number of wires to reroute in each iteration.
+            switch_equal_configs (bool, optional): Whether to allow switching configurations with equal cost. Defaults to False.
 
         Returns:
-            bool: True if a better configuration is found, False otherwise.
+            bool: True if a better configuration is found, otherwise False.
         """
         total_permutations = perm(len(self.chip.wires), amount_of_wires)
         for i, wires in enumerate(itertools.permutations(self.chip.wires, r=amount_of_wires)):
@@ -246,6 +300,20 @@ class A_star_optimize(A_star):
         return True
     
     def optimize_n_wires_random_permutations(self, amount_of_wires: int, amount_of_iterations: int=20000, switch_equal_configs: bool=False) -> bool:
+        """
+        Optimize wire routing using random wire permutations.
+
+        Instead of checking all possible permutations, this method randomly selects
+        wire configurations to reroute, making the process managable for more simultanious wires.
+
+        Args:
+            amount_of_wires (int): The number of wires to reroute per iteration.
+            amount_of_iterations (int, optional): The number of random permutations to try. Defaults to 20000.
+            switch_equal_configs (bool, optional): Whether to allow switching configurations with equal cost. Defaults to False.
+
+        Returns:
+            bool: True if an improved configuration is found, otherwise False.
+        """
         for i in range(amount_of_iterations):
             wires = random.sample(self.chip.wires, k=amount_of_wires)
             self.optimize_n_wires_1_permutation(wires=wires, amount_of_permutations=amount_of_iterations, iteration=i, switch_equal_configs=switch_equal_configs)
@@ -257,7 +325,31 @@ class A_star_optimize(A_star):
         self.previous_lowest_cost = self.lowest_cost
         return True
 
-    def optimize_n_wires_1_permutation(self, wires: list['Wire'], amount_of_permutations: int, iteration: int, switch_equal_configs: bool=False):
+    def optimize_n_wires_1_permutation(
+        self, 
+        wires: list['Wire'], 
+        amount_of_permutations: int, 
+        iteration: int, 
+        switch_equal_configs: bool = False
+    ) -> None:
+        """
+        Attempts to optimize the routing of a given set of wires using A* search and simulated annealing.
+
+        This method removes existing wire routes and recalculates them in an attempt to reduce
+        overall wire cost and intersections. It decides whether to keep the new configuration 
+        based on cost reduction and simulated annealing criteria.
+
+        Args:
+            wires (list[Wire]): List of wires to optimize.
+            amount_of_permutations (int): Total number of permutations in the optimization process.
+            iteration (int): Current iteration number in the optimization loop.
+            switch_equal_configs (bool, optional): If True, allows switching to configurations 
+                with equal cost. Defaults to False.
+
+        Returns:
+            None: Modifies the chip state in-place.
+        """
+
         if iteration % 1000 == 0:
             print(f"wire combo {iteration} out of {amount_of_permutations} permutations")
 
@@ -304,6 +396,7 @@ class A_star_optimize(A_star):
             else:
                 revert = new_cost >= self.lowest_cost
 
+        
         # revert back to old configuration
         if revert or not self.chip.is_fully_connected():
             for wire, old_coords in zip(wires, old_wire_coords):
@@ -326,15 +419,18 @@ class A_star_optimize(A_star):
     @staticmethod
     def acceptance_probability(new_cost: int, old_cost: int, temperature: int) -> int:
         """
-        Calculate the acceptance probability for a new configuration in simulated annealing.
+        Compute the probability of accepting a new configuration based on simulated annealing.
+
+        If the new cost is lower than the old cost, the new configuration is always accepted.
+        Otherwise, acceptance follows an exponential probability function.
 
         Args:
             new_cost (int): Cost of the new configuration.
             old_cost (int): Cost of the current configuration.
-            temperature (int): Current temperature in simulated annealing.
+            temperature (int): Current temperature in the annealing process.
 
         Returns:
-            int: Acceptance probability for the new configuration.
+            int: Probability of accepting the new configuration, in the range [0, 1].
         """
         if new_cost < old_cost:
             return 1

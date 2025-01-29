@@ -1,10 +1,8 @@
 from src.classes.chip import Chip
-from src.algorithms.utils import *
+from src.algorithms.utils import manhattan_distance, Coords_3D
 from src.algorithms.random_algo import Pseudo_random
-from src.algorithms.A_star import A_star
-import math
+from src.algorithms.A_star import A_star, A_star_optimize
 import random
-import copy
 from math import inf
 
 from typing import TYPE_CHECKING
@@ -13,13 +11,14 @@ if TYPE_CHECKING:
     from src.classes.wire import Wire
 
 class IRRA_PR(Pseudo_random):
-
     """
     Iterative Random Rerouting Algorithm (IRRA):
-    The IRRA algorithm starts off in a random configuration after which it will try to reroute the wiring which will cause a short circuit. 
-    The algorithm will start off in another random configuration after there are no short circuits left, or after no short circuits are able to be filtered out.
-    Optional: put a limit on the goal of working out the intersections, making the algorithm more efficient
-    Optional: put a limit on the initial intersection amount, checking only random configurations with a lower intersection amount
+    This algorithm starts with a random configuration and iteratively tries to reroute wires 
+    to minimize short circuits (wire intersections). The algorithm runs for a set number 
+    of iterations or until it reaches a solution with an acceptable number of intersections. 
+    Optionally, limits can be applied to control the algorithm's efficiency or restrict the initial 
+    intersection amount when generating an initial input solution. The initial input solution is generated
+    using the Pseudo Random (PR) algorithm.
     """
 
     def __init__(
@@ -38,8 +37,25 @@ class IRRA_PR(Pseudo_random):
         temperature_alpha: int = 0.9,
         random_seed: int | None = None,
         **kwargs
-    ):
+    ) -> None:
+        """
+        Initializes the IRRA_PR algorithm with various parameters for rerouting and optimization.
 
+        Args:
+            chip: The Chip object to be rerouted.
+            iterations: The number of iterations the algorithm will run.
+            intersection_limit: The maximum number of intersections allowed for the input solution.
+            acceptable_intersection: The maximum acceptable number of wire intersections before stopping.
+            early_stopping_patience: The number of iterations to wait without improvement before stopping early.
+            max_offset: The maximum offset allowed when rerouting wires.
+            rerouting_offset: The offset used for rerouting wires.
+            allow_short_circuit: Flag indicating whether short circuits are allowed during rerouting.
+            A_star_rerouting: Flag indicating whether A* rerouting should be used.
+            simulated_annealing: Flag indicating whether simulated annealing should be used.
+            start_temperature: The starting temperature for simulated annealing.
+            temperature_alpha: The cooling rate for simulated annealing.
+            random_seed: A random seed for reproducibility.
+        """
         super().__init__(
             chip=chip,
             max_offset=max_offset,
@@ -76,13 +92,14 @@ class IRRA_PR(Pseudo_random):
 
     def run(self) -> Chip:
         """
-        Running this algorithm as follows:
-        1) For up to `self.iterations` attempts:
-           a) Clear the chip occupancy & wire paths.
-           b) Let parent (Random_random) create a random configuration, if within acceptable_intersection continue.
-           c) Iteratively fix short circuits until we can't reduce them further.
-           d) If intersection limit is reached, we stop early.
-        2) Restore the best configuration found to the chip.
+        Runs the IRRA algorithm. It tries to find an optimal wiring configuration by:
+        1) Generating a random configuration.
+        2) Rerouting wires to minimize intersections.
+        3) Optimizing the wiring cost.
+        4) Stopping early if the intersection limit is met or further improvements are not found.
+
+        Returns:
+            The Chip object with the best configuration found.
         """
         algo_name_input = "[IRRA input]"
         algo_name_routing = "[IRRA A* routing]" if self.A_star_rerouting else "[IRRA annealing routing]" if self.simulated_annealing else "[IRRA BFS routing]"
@@ -119,7 +136,7 @@ class IRRA_PR(Pseudo_random):
             print(f"Current cost: {self.chip.calc_total_grid_cost()}")
             
             if self.A_star_rerouting:
-                self.A_star_optimize()
+                self.A_star_optimize_chip()
             else:
                 self.greed_optimize()
             
@@ -157,22 +174,15 @@ class IRRA_PR(Pseudo_random):
 
     def intersections_rerouting(self) -> None:
         """
-        Tries to remove intersections by rerouting intersecting wires one-by-one.
-        Continues until no more improvements are made or no intersections remain.
+        Attempts to reroute intersecting wires one-by-one with BFS or Simulated Annealing to reduce intersections.
+        Continues until no further improvements are made or all intersections are resolved.
         """
-
+        intersection_count = self.chip.get_wire_intersect_amount()
+        improved = True
         temperature_iterations = 0
         temperature = self.start_temperature
 
-        while True:
-
-            intersection_count = self.chip.get_wire_intersect_amount()
-            if intersection_count == 0:
-                # no intersections, thus fully fixed
-                return
-            
-            print(f"We reduced the intersections to: {intersection_count} with {self.chip.calc_total_grid_cost()}")
-
+        while improved and intersection_count != 0:
             improved = False
 
             # identify all intersection coordinates
@@ -204,31 +214,26 @@ class IRRA_PR(Pseudo_random):
                     temperature = self.exponential_cooling(self.start_temperature, self.temperature_alpha, temperature_iterations)
             
 
-            # if no single-wire reroute improved things => stop
-            if not improved:
-                if self.simulated_annealing:
-                    print(f"Currently using starttemperature: {self.start_temperature} with alpha: {self.temperature_alpha}.")
+            if not improved and self.simulated_annealing:
+                print(f"Currently using start temperature: {self.start_temperature} with alpha: {self.temperature_alpha}.")
 
-                return
+            
+            intersection_count = self.chip.get_wire_intersect_amount()
+            print(f"We reduced the intersections to: {intersection_count} with {self.chip.calc_total_grid_cost()}")
+
             
     def intersections_rerouting_A_star(self) -> None:
         """
-        Tries to remove intersections by rerouting intersecting wires one-by-one.
-        Continues until no more improvements are made or no intersections remain.
+        Attempts to reroute intersecting wires one-by-one using A* to resolve intersections.
+        Continues until no further improvements are made or all intersections are resolved.
         """
-        while True:
-            intersection_count = self.chip.get_wire_intersect_amount()
-            if intersection_count == 0:
-                # no intersections, thus fully fixed
-                return
-
+        improved = True
+        intersection_count = self.chip.get_wire_intersect_amount()
+        while improved and intersection_count != 0:
             improved = False
 
             # identify all intersection coordinates
             intersection_coords = self.chip.get_intersection_coords()
-            if not intersection_coords:
-                return
-
             for coord in intersection_coords:
                 # we find all wires passing through this intersection coordinate
                 occupation_set = self.chip.get_coord_occupancy(coord, exclude_gates=True)
@@ -245,16 +250,22 @@ class IRRA_PR(Pseudo_random):
                     improved = True
                     # if improved, break out to recalculate intersections
                     break
+            
+            intersection_count = self.chip.get_wire_intersect_amount()
 
-            # if no single-wire reroute improved things => stop
-            if not improved:
-                return
-
-    def reroute_wire(self, wire: 'Wire', temperature: int) -> bool:
+    def reroute_wire(self, wire: 'Wire', temperature: int=0) -> bool:
         """
-        Removes a wire from the occupancy grid and tries to find a new
-        shortcircuit-free path for it. Returns True if rerouting improved the situation,
-        else False (and reverts).
+        Attempts to reroute the specified wire to avoid intersections with other wires.
+        The wire is rerouted by removing it and then rerouting it using BFS or simulated annealing.
+        If the new path reduces the number of intersections, it is kept. Otherwise, the old path is restored
+        based on a probabilty for Simulated Annealing and is always restored with BFS.
+
+        Args:
+            wire (Wire): The wire to be rerouted.
+            temperature (int): The temperature used for simulated annealing (optional).
+
+        Returns:
+            bool: True if the rerouting was successful, False otherwise.
         """
         new_path = None
 
@@ -281,7 +292,6 @@ class IRRA_PR(Pseudo_random):
             )
 
             if new_path:
-
                 self.add_new_path(wire, new_path)
                 new_cost = self.chip.calc_total_grid_cost()
 
@@ -320,9 +330,15 @@ class IRRA_PR(Pseudo_random):
 
     def reroute_wire_A_star(self, wire: 'Wire') -> bool:
         """
-        Removes a wire from the occupancy grid and tries to find a new
-        shortcircuit-free path for it. Returns True if rerouting improved the situation,
-        else False (and reverts).
+        Attempts to reroute the specified wire to avoid intersections using the A* algorithm.
+        The wire is rerouted by removing it and then rerouting it using A*. If the new path
+        reduces the number of intersections, it is kept. Otherwise, the old path is restored.
+        
+        Args:
+            wire (Wire): The wire to be rerouted.
+
+        Returns:
+            bool: True if the rerouting was successful, False otherwise.
         """
         # we create a copie of the old state
         old_coords = wire.coords_wire_segments[:]
@@ -330,10 +346,7 @@ class IRRA_PR(Pseudo_random):
         old_cost = self.chip.calc_total_grid_cost()
 
         # 1) remove old segments from occupancy (except gates)
-        for c in old_coords:
-            # remove all wire from occupancy coords except in gate coords
-            if c not in wire.gates: 
-                self.chip.occupancy.remove_from_occupancy(c, wire)
+        self.chip.remove_wire_from_occupancy(wire)
 
         start = wire.gates[0]
         end = wire.gates[1]
@@ -364,18 +377,24 @@ class IRRA_PR(Pseudo_random):
         self.restore_wire(wire, old_coords)
         return False
     
-    def add_new_path(self, wire, new_path) -> None:
-            
-            start = wire.gates[0]
-            end = wire.gates[1]
-            wire.coords_wire_segments = [start] + new_path + [end]
+    def add_new_path(self, wire: Wire, new_path: list[Coords_3D]) -> None:
+        """
+        Adds a new path to the wire and occupancy.
 
-            for c in new_path:
-                self.chip.add_wire_segment_to_occupancy(c, wire)
+        Args:
+            wire (Wire): The wire to add the new path to.
+            new_path (list[Coords_3D]): The new path to add.
+        """
+        wire.append_wire_segment_list(new_path)
+        self.chip.add_wire_segment_list_to_occupancy(new_path, wire)
 
     def restore_wire(self, wire: 'Wire', old_coords: list[Coords_3D]) -> None:
         """
-        Restores a wire to given coords in occupancy.
+        Restores the wire to its previous state.
+
+        Args:
+            wire (Wire): The wire to restore.
+            old_coords (list[Coords_3D]): The old coordinates of the wire.
         """
         self.chip.reset_wire(wire)
         wire.append_wire_segment_list(old_coords)
@@ -383,21 +402,24 @@ class IRRA_PR(Pseudo_random):
 
     def restore_best_solution(self) -> None:
         """
-        After all iterations, put the chip back to the best configuration found.
+        Restores the best solution found to the chip.
         """
         self.chip.reset_all_wires()
         self.chip.add_entire_wires(self.best_wire_segment_list)
 
     def greed_optimize(self) -> None:
         """
-        After the grid is fully connected and intersections are minimized,
-        do a local 'greedy' improvement pass to reduce total wire length/cost.
+        Performs a local greedy improvement pass to reduce the total wire length/cost
+        after the grid is fully connected and intersections are minimized.
 
         For each wire:
-        1) Temporarily remove it from occupancy.
-        2) BFS-route again (prioritizing short paths).
-        3) Compare new total cost (or intersections) vs. old. Keep if better.
-            Otherwise revert to the old route.
+        1) Temporarily removes the wire from occupancy.
+        2) Performs a BFS to find a shorter path, prioritizing shorter routes.
+        3) Compares the new path's total cost or intersections to the old one. If better,
+           the new path is kept; otherwise, the old route is restored.
+
+        The process is repeated for all wires in the chip, with the goal of minimizing 
+        the total grid cost.
         """
         
         for wire in self.chip.wires:
@@ -451,61 +473,37 @@ class IRRA_PR(Pseudo_random):
                     if coord not in wire.gates:
                         self.chip.add_wire_segment_to_occupancy(coord, wire)
 
-    def A_star_optimize(self) -> None:
+    def A_star_optimize_chip(self) -> None:
         """
-        After the grid is fully connected and intersections are minimized,
-        do an A* search for each wire to reduce total wire length/cost.
+        Optimizes the chip's wiring configuration using the A* algorithm.
 
-        For each wire:
-        1) Temporarily remove it from occupancy.
-        2) Calculate the route again using A* (prioritizing short paths).
-        3) Compare new total cost (or intersections) vs. old. Keep if better.
-            Otherwise revert to the old route.
+        This method initiates an A* optimization process on the chip's wiring, aiming to 
+        reroute all wires by rerouting 1 each time by temporarily removing it. It uses 
+        the A* algorithm for rerouting while considering short-circuit allowance.
+
+        The optimization is performed with the objective of reducing total wiring cost 
+        or intersections.
         """
-        iteration = 0
-        while True:
-            iteration += 1
-            best_cost = inf
-            previous_best_cost = inf
-            random.shuffle(self.chip.wires)
-            for wire in self.chip.wires:
-                # snapshot old wire state
-                old_coords = wire.coords_wire_segments[:]
-                old_cost = self.chip.calc_total_grid_cost()
-                new_cost = old_cost
-
-                # 1) remove old wire from chip
-                self.chip.reset_wire(wire)
-
-                # 2) attempt A* for a new, hopefully shorter route.
-                start, end = wire.gates[0], wire.gates[-1]
-                new_path = self.a_star.shortest_cable(self.chip, start, end, allow_short_circuit=True)
-
-                # If A* yields a path, see whether it improves the total cost
-                if new_path:
-                    wire.append_wire_segment_list(new_path)
-                    self.chip.add_wire_segment_list_to_occupancy(new_path, wire)
-                    new_cost = self.chip.calc_total_grid_cost()
-
-                # 3) if no improvement, revert
-                if new_cost >= old_cost or not self.chip.is_fully_connected():
-                    self.chip.reset_wire(wire)
-                    wire.append_wire_segment_list(old_coords)
-                    self.chip.add_wire_segment_list_to_occupancy(old_coords, wire)
-
-                else:
-                    best_cost = new_cost
-                    print(f"{iteration}: Route optimized: new cost = {new_cost}")
-
-
-            if best_cost == previous_best_cost:
-                return
-            
-            previous_best_cost = best_cost
+        self.a_star_optimize = A_star_optimize(
+            chip=self.chip,
+            allow_short_circuit=True
+        )
+        self.a_star_optimize.optimize(reroute_n_wires=1)
 
     @staticmethod
     def acceptance_probability(new_cost: int, old_cost: int, temperature: int) -> int:
-        
+        """
+        Calculates the acceptance probability for a new solution in a simulated annealing 
+        algorithm.
+
+        Args:
+            new_cost: The cost of the new solution.
+            old_cost: The cost of the previous solution.
+            temperature: The current temperature used in the simulated annealing process.
+
+        Returns:
+            The probability of accepting the new solution (1 or a value between 0 and 1).
+        """
         if new_cost < old_cost:
             return 1
         
@@ -514,29 +512,59 @@ class IRRA_PR(Pseudo_random):
 
     @staticmethod    
     def exponential_cooling(start_temperature: int, alpha: int, iterations: int) -> int:
+        """
+        Computes the temperature for each iteration in an exponential cooling schedule.
 
+        Args:
+            start_temperature: The initial temperature at the start of the process.
+            alpha: The cooling rate (0 ≤ alpha ≤ 1).
+            iterations: The number of iterations completed so far.
+
+        Returns:
+            The new temperature after applying the exponential cooling formula.
+        """
         return start_temperature * (alpha ** iterations)
 
 
 class IRRA_A_star(A_star, IRRA_PR):
-
     """
-    Iterative Random Rerouting Algorithm (IRRA):
-    The IRRA algorithm starts off in a random configuration after which it will try to reroute the wiring which will cause a short circuit. 
-    The algorithm will start off in another random configuration after there are no short circuits left, or after no short circuits are able to be filtered out.
-    Optional: put a limit on the goal of working out the intersections, making the algorithm more efficient
-    Optional: put a limit on the initial intersection amount (l * GATE) checking only random configurations with a low intersection amount
+    The IRRA_A_star class uses the Iterative Reconfiguration of Routing Algorithm (IRRA) with
+    an A* solutions as input to optimize chip wire routing. 
+    The algorithm iterates over multiple solutions to minimize 
+    total cost and wire intersections.
+
+    It generates random wire configurations, reroutes to reduce intersections, 
+    optimizes that routing, and checks for the best solution, stopping early if 
+    certain conditions (e.g., intersection limit or optimal cost) are met.
+
+    Attributes:
+        A_star_rerouting (bool): Enables A* rerouting.
+        simulated_annealing (bool): Enables simulated annealing rerouting.
+        iterations (int): Number of iterations.
+        intersection_limit (int): Max allowed intersections before stopping early.
+        early_stopping_patience (int): Consecutive iterations with same cost before early stop.
+        acceptable_intersection (int): Acceptable wire intersections for the input solution.
+        best_cost (int): Best found cost.
+        best_wire_segment_list (list): Wire segments of the best solution.
+        all_costs (list): List of all encountered costs.
     """
 
     def run(self) -> Chip:
         """
-        Running this algorithm as follows:
-        1) For up to `self.iterations` attempts:
-           a) Clear the chip occupancy & wire paths.
-           b) Let parent (Random_random) create a random configuration, if within acceptable_intersection continue.
-           c) Iteratively fix short circuits until we can't reduce them further.
-           d) If intersection limit is reached, we stop early.
-        2) Restore the best configuration found to the chip.
+        Runs the IRRA A* optimization algorithm, iterating over multiple random wiring 
+        configurations to find the best solution with minimized total cost and intersections.
+
+        The process consists of the following steps:
+        1) Clears occupancy and resets wire paths for the chip.
+        2) Generates a random wiring configuration using A*.
+        3) Repeats until a configuration is fully connected and has acceptable intersections.
+        4) Attempts to reroute wires to reduce intersections using A* or BFS.
+        5) Performs quick optimization of the route to minimize cost.
+        6) Tracks the best solution found and stops early if the intersection limit or 
+           optimal solution is reached.
+
+        Returns:
+            Chip: The optimized chip object with the best wire routing configuration found.
         """
         self.shuffle_wires = True
         algo_name_input = "[IRRA A* input]"
@@ -555,7 +583,7 @@ class IRRA_A_star(A_star, IRRA_PR):
 
             # repeat this step until we find a configuration that is fully connected 
             # optional) repeat this step until we have wiring that has acceptable intersection amount 
-            while (self.chip.get_wire_intersect_amount() >= self.acceptable_intersection) or not self.chip.is_fully_connected:
+            while (self.chip.get_wire_intersect_amount() >= self.acceptable_intersection) or not self.chip.is_fully_connected():
                 self.chip.reset_all_wires()
                 super().run()
                 print(f"Finding configuration: {improvement_iteration}, intersections: {self.chip.get_wire_intersect_amount()}")
@@ -573,7 +601,7 @@ class IRRA_A_star(A_star, IRRA_PR):
             print(f"Current cost: {self.chip.calc_total_grid_cost()}")
             
             if self.A_star_rerouting:
-                self.A_star_optimize()
+                self.A_star_optimize_chip()
             else:
                 self.greed_optimize()
 

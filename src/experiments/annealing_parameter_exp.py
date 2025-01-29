@@ -16,7 +16,28 @@ def annealing_parameter_experiment(
     json_output_save_name: str | None = None,
     base_output_dir: str = "results/latest/parameter_research/"
 ) -> tuple[Chip, str]:
-    
+    """
+    Runs an annealing parameter experiment on different chip configurations, testing different temperature
+    and alpha parameters for simulated annealing with either the A* or PR input with the IRRA algorithm.
+    Saves the results to a JSON file and returns the chip with the lowest cost found during the experiment.
+
+    Args:
+        chip_id (int): The ID of the chip to experiment with.
+        net_id (int): The ID of the netlist for the chip.
+        temperature_candidates (list[int]): A list of candidate temperature values for the simulated annealing.
+        alpha_candidates (list[int]): A list of candidate alpha values for the simulated annealing.
+        solution_input (str): The input solution to use for the IRRA algorithm, either "A*" or "PR" (default is "A*").
+        iterations (int): The number of iterations for the annealing algorithm (default is 250).
+        json_output_save_name (str | None): A custom filename to save the JSON output (default is None, meaning a general name is chosen based on the parameters).
+        base_output_dir (str): The base directory where results will be saved (default is "results/latest/parameter_research/").
+
+    Returns:
+        tuple[Chip, str]: A tuple containing the best chip found and the algorithm used for the experiment.
+
+    Raises:
+        ValueError: If an invalid solution_input is provided (not "A*" or "PR").
+    """
+
     print("Starting annealing parameter experiment...")
     lowest_cost = inf
     chip = Chip(chip_id=chip_id, net_id=net_id, output_folder="output", padding=1)
@@ -71,6 +92,8 @@ def annealing_parameter_experiment(
                 "best_cost found": min(all_costs),
                 "all_costs": all_costs
             })
+
+    os.makedirs(base_output_dir, exist_ok=True)
 
     # saving output as json file
     if json_output_save_name is not None:
