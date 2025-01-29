@@ -31,7 +31,7 @@ if __name__ == "__main__":
     parser.add_argument("-w", "--wire_config", type=int, choices=[1, 2, 3, 4, 5, 6, 7, 8, 9], default=1, 
                         help="Netlist to use (chip 0: {1,2,3}; chip 1: {4,5,6}; chip 2: {7,8,9} - default: 1)")
     parser.add_argument("-n", "--num_of_iterations", type=int, default=1, help="Number of iterations to repeat the algorithm (default: 1)")
-    parser.add_argument("-p", "--padding", type=int, default=1, help="Extra space on all sides of the grid  (default: 1)")
+    parser.add_argument("-p", "--padding", type=int, default=1, help="Extra space on all sides of the grid for placing wires (default: 1)")
     parser.add_argument("-a", "--algorithm", choices=[
         "Greed", "Greed Random", "GR", "Pseudo Random", "PR", "True Random", "TR", "A*", "IRRA_PR", "IRRA_A*"
     ], default="IRRA_A*", help="Algorithm to connect wires with (default: IRRA_A*)")
@@ -94,8 +94,8 @@ if __name__ == "__main__":
             use_plot=use_plot,
             save_plot=save_plot, 
             save_wire_config=save_config,
-            total_permutations_limit=20000,
-            amount_of_random_iterations=500,
+            total_permutations_limit=500000,
+            amount_of_random_iterations=20000,
         )
 
     elif optimize:
