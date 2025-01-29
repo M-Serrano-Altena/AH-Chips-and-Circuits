@@ -216,7 +216,7 @@ class A_star_optimize(A_star):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-
+        self.temperature = 0
         self.current_cost = self.chip.calc_total_grid_cost()
         self.best_wire_coords: list[list[Coords_3D]] = self.chip.wire_segment_list
         self.lowest_cost = self.current_cost
@@ -244,6 +244,7 @@ class A_star_optimize(A_star):
             amount_of_random_iterations (int, optional): Number of random permutations to try if permutation limit is exceeded. Defaults to 20000.
         """
         print("Starting A* optimization...")
+        print(self.chip.is_fully_connected())
         self.start_temperature = start_temperature
         self.alpha = alpha
         for i in range(1, reroute_n_wires + 1):
@@ -395,6 +396,7 @@ class A_star_optimize(A_star):
             else:
                 revert = new_cost >= self.lowest_cost
 
+        
         # revert back to old configuration
         if revert or not self.chip.is_fully_connected():
             for wire, old_coords in zip(wires, old_wire_coords):

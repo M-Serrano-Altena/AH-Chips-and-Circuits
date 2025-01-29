@@ -67,17 +67,17 @@ if __name__ == "__main__":
     # Run chosen algorithm with just command-line arguments
     #===========================================================================
 
-    # run_algorithm(
-    #     chip=chip,
-    #     algorithm_name=algorithm_name,
-    #     routing_type=routing_type,
-    #     shuffle_wires=shuffle_wires,
-    #     iterations=iterations,
-    #     use_plot=use_plot and not optimize,
-    #     save_plot=save_plot,
-    #     # don't save wire config if we're optimizing
-    #     save_wire_config=save_config if not optimize else False, 
-    # )
+    run_algorithm(
+        chip=chip,
+        algorithm_name=algorithm_name,
+        routing_type=routing_type,
+        shuffle_wires=shuffle_wires,
+        iterations=iterations,
+        use_plot=use_plot and not optimize,
+        save_plot=save_plot,
+        # don't save wire config if we're optimizing
+        save_wire_config=save_config if not optimize else False, 
+    )
 
     #===========================================================================
     # Optimize chip after running algorithm
@@ -157,15 +157,15 @@ if __name__ == "__main__":
 
 
     # --------------------------- A* --------------------------------------------
-    used_algo_name = "A*"
-    A_star_algo = A_star(chip=chip, sort_wires=False, shuffle_wires=True)
+    # used_algo_name = "A*"
+    # A_star_algo = A_star(chip=chip, sort_wires=False, shuffle_wires=True)
 
     ## choose 1 of the following 2 options
-    A_star_algo.run()
-    # A_star_algo.run_random_netlist_orders(iterations=100)
+    # A_star_algo.run()
+    # # A_star_algo.run_random_netlist_orders(iterations=100)
 
-    chip.show_grid(image_filename=None, algorithm_name=used_algo_name)
-    chip.save_output("output.csv")
+    # chip.show_grid(image_filename=None, algorithm_name=used_algo_name)
+    # chip.save_output("output.csv")
 
 
     # ------------------------- IRRA PR (BFS routing) ---------------------------
@@ -281,17 +281,17 @@ if __name__ == "__main__":
     # different values. Changing solution inptut to "A*" will test the A* solution
     # instead of the Pseudo Random solution as input for the IRRA algorithm
 
-    temperature_candidates = [500, 750, 1000, 1500, 2000]
-    alpha_candidates = [0.9, 0.925, 0.95, 0.975, 0.99]
-    annealing_parameter_experiment(
-        chip_id=chip_id,
-        net_id=net_id,
-        solution_input="PR",
-        iterations=1,
-        temperature_candidates=temperature_candidates,
-        alpha_candidates=alpha_candidates,
-        json_output_save_name=None,
-    )
+    # temperature_candidates = [500, 750, 1000, 1500, 2000]
+    # alpha_candidates = [0.9, 0.925, 0.95, 0.975, 0.99]
+    # annealing_parameter_experiment(
+    #     chip_id=chip_id,
+    #     net_id=net_id,
+    #     solution_input="PR",
+    #     iterations=1,
+    #     temperature_candidates=temperature_candidates,
+    #     alpha_candidates=alpha_candidates,
+    #     json_output_save_name=None,
+    # )
 
     # ------------------- IRRA Routing Comparison -------------------------------
     # You can add specific_routing_only to only run the algorithm on a specific
@@ -300,41 +300,41 @@ if __name__ == "__main__":
     # an amount of iterations instead of a time limit, you can set
     # iterations_per_routing to a positive integer
 
-    IRRA_routing_comparison_both_inputs(
-        chip_id=chip_id,
-        net_id=net_id,
-        solution_input="A*",
-        iterations_per_routing=10000,
-        time_in_seconds_per_routing=0,
-        json_output_save_name=None,
-        specific_routing_only=None
-    )
+    # IRRA_routing_comparison_both_inputs(
+    #     chip_id=chip_id,
+    #     net_id=net_id,
+    #     solution_input="A*",
+    #     iterations_per_routing=10000,
+    #     time_in_seconds_per_routing=0,
+    #     json_output_save_name=None,
+    #     specific_routing_only=None
+    # )
 
     # ------------------- IRRA Offset Experiment --------------------------------
     # same logic for arguments as IRRA Routing Comparison experiment.
     # you can avoid all uneven offsets, because a wire will never have an uneven
     # extra length compared to the minimum length of the wire.
     # (each extra direction must eventually be compensated by the opposite direction)
-    offset_experiment(
-        chip_id=chip_id,
-        net_id=net_id,
-        offsets=range(40, 61, 2),
-        solution_input="A*",
-        iterations_per_offset=0,
-        time_in_seconds_per_offset=1,
-        json_output_save_name=None,
-        base_output_dir="results/latest/parameter_research/"
-    )
+    # offset_experiment(
+    #     chip_id=chip_id,
+    #     net_id=net_id,
+    #     offsets=range(40, 61, 2),
+    #     solution_input="A*",
+    #     iterations_per_offset=0,
+    #     time_in_seconds_per_offset=1,
+    #     json_output_save_name=None,
+    #     base_output_dir="results/latest/parameter_research/"
+    # )
 
     # ------------------- Solution Distribution ---------------------------------
-    algorithm_solution_distribution(
-        chip_id=chip_id,
-        net_id=net_id,
-        algorithm_name="A*",
-        iterations=10,
-        json_output_save_name=None,
-        base_output_dir="results/latest/solution_distributions/"
-    )
+    # algorithm_solution_distribution(
+    #     chip_id=chip_id,
+    #     net_id=net_id,
+    #     algorithm_name="A*",
+    #     iterations=10,
+    #     json_output_save_name=None,
+    #     base_output_dir="results/latest/solution_distributions/"
+    # )
 
     #============================================================================
 
@@ -345,69 +345,69 @@ if __name__ == "__main__":
     # ------------------- Offset Experiment Plot --------------------------------
     # if the file name includes some mention of the chip and net id, you can 
     # also leave the chip_id and net_id arguments as None
-    create_offset_experiment_plot(
-        json_offset_results_file="results/experiments/parameter_research/chip2w7_irra_PR_offset_experiment.json",
-        chip_id=None,
-        net_id=None,
-        plot_save_name=None,
-        plot_save_base_dir="results/latest/experiment_plots"
-    )
+    # create_offset_experiment_plot(
+    #     json_offset_results_file="results/experiments/parameter_research/chip2w7_irra_PR_offset_experiment.json",
+    #     chip_id=None,
+    #     net_id=None,
+    #     plot_save_name=None,
+    #     plot_save_base_dir="results/latest/experiment_plots"
+    # )
 
     # ------------------- Parameter Annealing heatmap ----------------------------
-    create_sim_anneal_heatmap(
-        json_sim_anneal_data_filepath="results/experiments/parameter_research/chip2w7_annealing_pr.json",
-        solution_input="PR",
-        chip_id=None,
-        net_id=None,
-        plot_save_name=None,
-        plot_save_base_dir="results/latest/experiment_plots"
-    )
+    # create_sim_anneal_heatmap(
+    #     json_sim_anneal_data_filepath="results/experiments/parameter_research/chip2w7_annealing_pr.json",
+    #     solution_input="PR",
+    #     chip_id=None,
+    #     net_id=None,
+    #     plot_save_name=None,
+    #     plot_save_base_dir="results/latest/experiment_plots"
+    # )
 
     # ------------------- Input Comparison Histogram ----------------------------
-    create_input_comparison_hist(
-        json_astar_path="results/experiments/irra_routing_comparisons/chip2w7_irra_astar_routing_comparison_10000_iterations.json",
-        json_pr_path="results/experiments/irra_routing_comparisons/chip2w7_irra_PR_astar_routing_1000_iterations.json",
-        routing_type="A*", # "BFS", "Simulated Annealing", "A*"
-        chip_id=None,
-        net_id=None,
-        plot_save_name=None,
-        plot_save_base_dir="results/latest/experiment_plots"
-    )
+    # create_input_comparison_hist(
+    #     json_astar_path="results/experiments/irra_routing_comparisons/chip2w7_irra_astar_routing_comparison_10000_iterations.json",
+    #     json_pr_path="results/experiments/irra_routing_comparisons/chip2w7_irra_PR_astar_routing_1000_iterations.json",
+    #     routing_type="A*", # "BFS", "Simulated Annealing", "A*"
+    #     chip_id=None,
+    #     net_id=None,
+    #     plot_save_name=None,
+    #     plot_save_base_dir="results/latest/experiment_plots"
+    # )
 
     # ------------------- Routing Comparison Histogram --------------------------
-    create_routing_comparison_hist(
-        json_data_filepath="results/experiments/irra_routing_comparisons/chip2w7_irra_astar_routing_comparison_10000_iterations.json",
-        chip_id=None,
-        net_id=None,
-        solution_input="A*",
-        plot_save_name=None,
-        plot_save_base_dir="results/latest/experiment_plots"
-    )
+    # create_routing_comparison_hist(
+    #     json_data_filepath="results/experiments/irra_routing_comparisons/chip2w7_irra_astar_routing_comparison_10000_iterations.json",
+    #     chip_id=None,
+    #     net_id=None,
+    #     solution_input="A*",
+    #     plot_save_name=None,
+    #     plot_save_base_dir="results/latest/experiment_plots"
+    # )
 
     # ------------------- All Comparisons Boxplot -------------------------------
-    create_irra_all_comparisons_boxplot(
-        json_routing_comparison_astar_path="results/experiments/irra_routing_comparisons/chip2w7_irra_astar_routing_comparison_3600_seconds.json",
-        json_routing_comparison_pr_path="results/experiments/irra_routing_comparisons/chip2w7_irra_pr_routing_comparison_3600_seconds.json",
-        chip_id=None,
-        net_id=None,
-        add_baseline=True,
-        json_astar_solution_distrib_filepath="results/experiments/solution_distributions/chip2w7_astar_solution_distrib.json",
-        json_pr_solution_distrib_filepath="results/experiments/solution_distributions/chip2w7_pr_solution_distrib.json",
-        plot_save_name=None,
-        plot_save_base_dir="results/latest/experiment_plots"
-    )
+    # create_irra_all_comparisons_boxplot(
+    #     json_routing_comparison_astar_path="results/experiments/irra_routing_comparisons/chip2w7_irra_astar_routing_comparison_3600_seconds.json",
+    #     json_routing_comparison_pr_path="results/experiments/irra_routing_comparisons/chip2w7_irra_pr_routing_comparison_3600_seconds.json",
+    #     chip_id=None,
+    #     net_id=None,
+    #     add_baseline=True,
+    #     json_astar_solution_distrib_filepath="results/experiments/solution_distributions/chip2w7_astar_solution_distrib.json",
+    #     json_pr_solution_distrib_filepath="results/experiments/solution_distributions/chip2w7_pr_solution_distrib.json",
+    #     plot_save_name=None,
+    #     plot_save_base_dir="results/latest/experiment_plots"
+    # )
 
     # ------------------- Solution Distribution Histogram -----------------------
-    create_solution_distribution_hist(
-        json_solution_distrib_filepath="results/experiments/solution_distributions/chip2w7_pr_solution_distrib.json",
-        chip_id=None,
-        net_id=None,
-        algorithm_name="PR",
-        bins=39,
-        plot_costs_save_name=None,
-        plot_intersections_save_name=None,
-        plot_save_base_dir="results/latest/experiment_plots"
-    )
+    # create_solution_distribution_hist(
+    #     json_solution_distrib_filepath="results/experiments/solution_distributions/chip2w7_pr_solution_distrib.json",
+    #     chip_id=None,
+    #     net_id=None,
+    #     algorithm_name="PR",
+    #     bins=39,
+    #     plot_costs_save_name=None,
+    #     plot_intersections_save_name=None,
+    #     plot_save_base_dir="results/latest/experiment_plots"
+    # )
 
     #============================================================================
     
