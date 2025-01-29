@@ -161,7 +161,7 @@ def run_algorithm(
             iterations=iterations, 
             simulated_annealing=simulated_annealing, 
             A_star_rerouting=A_star_rerouting,
-            acceptable_intersection=500
+            acceptable_intersection=3000
         )
     else:
         algorithm = algorithm_name_options[algorithm_name](chip, shuffle_wires=shuffle_wires)
