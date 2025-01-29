@@ -11,7 +11,31 @@ def create_routing_comparison_hist(
     plot_save_name: str|None=None, 
     plot_save_base_dir: str="results/latest/experiment_plots"
 ) -> None:
+    """
+    Creates and saves a histogram comparing IRRA routing methods for a given solution input.
     
+    This function loads routing data from a JSON file, then generates a histogram comparing the 
+    distribution of short circuits for the three routing algorithms (BFS, Simulated Annealing, and A*) 
+    for the provided solution input ('PR' or 'A*'). The histogram is saved as a PNG file.
+
+    Args:
+        json_data_filepath (str): Path to the JSON file containing routing comparison data.
+        solution_input (str): The solution input type, either 'PR' (Pseudo-Random) or 'A*'.
+        chip_id (int, optional): The chip ID to include in the plot title and filename. 
+                                 If not provided, extracted from the filename.
+        net_id (int, optional): The net ID to include in the plot title and filename.
+                                If not provided, extracted from the filename.
+        plot_save_name (str, optional): Name of the output plot file. If not provided, a default 
+                                        name based on chip and net IDs is used.
+        plot_save_base_dir (str): Directory where the plot will be saved. Defaults to 
+                                  "results/latest/experiment_plots".
+
+    Raises:
+        ValueError: If `solution_input` is not either 'PR' or 'A*'.
+    
+    Returns:
+        None: The function saves the plot to the specified directory and file path.
+    """
     if chip_id is None or net_id is None:
         chip_id, net_id = extract_chip_id_net_id_from_file_name(json_data_filepath)
 
@@ -43,5 +67,8 @@ def create_routing_comparison_hist(
             f"chip{chip_id}w{net_id}_irra_{solution_input}_input_routing_comparison.png"
         )
 
+    os.makedirs(plot_save_base_dir, exist_ok=True)
     save_path = os.path.join(plot_save_base_dir, plot_save_name)
+    
     plt.savefig(save_path)
+    plt.clf()

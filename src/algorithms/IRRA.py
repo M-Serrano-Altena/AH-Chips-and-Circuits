@@ -1,10 +1,8 @@
 from src.classes.chip import Chip
-from src.algorithms.utils import *
+from src.algorithms.utils import manhattan_distance, Coords_3D
 from src.algorithms.random_algo import Pseudo_random
 from src.algorithms.A_star import A_star
-import math
 import random
-import copy
 from math import inf
 
 from typing import TYPE_CHECKING
@@ -160,19 +158,12 @@ class IRRA_PR(Pseudo_random):
         Tries to remove intersections by rerouting intersecting wires one-by-one.
         Continues until no more improvements are made or no intersections remain.
         """
-
+        intersection_count = self.chip.get_wire_intersect_amount()
+        improved = True
         temperature_iterations = 0
         temperature = self.start_temperature
 
-        while True:
-
-            intersection_count = self.chip.get_wire_intersect_amount()
-            if intersection_count == 0:
-                # no intersections, thus fully fixed
-                return
-            
-            print(f"We reduced the intersections to: {intersection_count} with {self.chip.calc_total_grid_cost()}")
-
+        while improved and intersection_count != 0:
             improved = False
 
             # identify all intersection coordinates
@@ -204,12 +195,13 @@ class IRRA_PR(Pseudo_random):
                     temperature = self.exponential_cooling(self.start_temperature, self.temperature_alpha, temperature_iterations)
             
 
-            # if no single-wire reroute improved things => stop
-            if not improved:
-                if self.simulated_annealing:
-                    print(f"Currently using starttemperature: {self.start_temperature} with alpha: {self.temperature_alpha}.")
+            if not improved and self.simulated_annealing:
+                print(f"Currently using start temperature: {self.start_temperature} with alpha: {self.temperature_alpha}.")
 
-                return
+            
+            intersection_count = self.chip.get_wire_intersect_amount()
+            print(f"We reduced the intersections to: {intersection_count} with {self.chip.calc_total_grid_cost()}")
+
             
     def intersections_rerouting_A_star(self) -> None:
         """
@@ -330,10 +322,7 @@ class IRRA_PR(Pseudo_random):
         old_cost = self.chip.calc_total_grid_cost()
 
         # 1) remove old segments from occupancy (except gates)
-        for c in old_coords:
-            # remove all wire from occupancy coords except in gate coords
-            if c not in wire.gates: 
-                self.chip.occupancy.remove_from_occupancy(c, wire)
+        self.chip.remove_wire_from_occupancy(wire)
 
         start = wire.gates[0]
         end = wire.gates[1]
@@ -365,7 +354,6 @@ class IRRA_PR(Pseudo_random):
         return False
     
     def add_new_path(self, wire, new_path) -> None:
-            
             start = wire.gates[0]
             end = wire.gates[1]
             wire.coords_wire_segments = [start] + new_path + [end]

@@ -12,12 +12,26 @@ def create_sim_anneal_heatmap(
     chip_id: int|None=None, 
     net_id: int|None=None, 
     plot_save_name: str|None=None, 
-    plot_save_base_dir: str="results/latest/experiment_plots"
-        
+    plot_save_base_dir: str="results/latest/experiment_plots"     
 ) -> None:
     """
-    Creates and saves a heatmap based on simulated annealing results.
-    
+    Creates and saves a heatmap based on simulated annealing results, visualizing the relationship between 
+    temperature and alpha values with corresponding median costs and standard deviation. The results are 
+    plotted and saved as a PNG file.
+
+    Args:
+        json_sim_anneal_data_filepath (str): The path to the JSON file containing simulated annealing results.
+        solution_input (str): The input solution type ('PR' for Pseudo Random or 'A*' for A* input to IRRA algorithm).
+        chip_id (int, optional): The chip ID for the routing experiment. If not provided, it is extracted from the file name.
+        net_id (int, optional): The netlist ID for the routing experiment. If not provided, it is extracted from the file name.
+        plot_save_name (str, optional): The name of the file to save the heatmap plot as. If not provided, a default name is used.
+        plot_save_base_dir (str, optional): The directory where the heatmap plot will be saved. Defaults to "results/latest/experiment_plots".
+
+    Raises:
+        ValueError: If the `solution_input` is not one of 'PR' or 'A*'.
+
+    Returns:
+        None: The function does not return any values. It saves the heatmap plot as a PNG file in the specified directory.
     """
     if chip_id is None or net_id is None:
         chip_id, net_id = extract_chip_id_net_id_from_file_name(json_sim_anneal_data_filepath)
@@ -74,7 +88,9 @@ def create_sim_anneal_heatmap(
     if plot_save_name is None:
         plot_save_name = f"chip{chip_id}w{net_id}_irra_{solution_input}_sim_anneal_heatmap.png"
 
+    os.makedirs(plot_save_base_dir, exist_ok=True)
     output_image_path = os.path.join(plot_save_base_dir, plot_save_name)
 
     # save figure
     plt.savefig(output_image_path, dpi=300)
+    plt.clf()

@@ -1,18 +1,27 @@
 from src.classes.chip import Chip
-from src.algorithms.utils import *
+from src.algorithms.utils import Coords_3D, manhattan_distance
 from src.algorithms.greed import Greed_random
 from collections import deque
 import random
 
 class Pseudo_random(Greed_random):
-
     """
-    First: makes wire connections at random for random offsets if possible
-    If finding random configuration not viable: check for cable connections iteratively (offset + 2, 4, 6 untill k)
-    If still no solution found (and allow_short_circuit = True): we connect ignoring short circuit
+    A class that extends `Greed_random` and implements a pseudo-random wire routing algorithm.
+    
+    This method connects wires in a chip by first attempting to generate paths with random offsets
+    around the minimum length between gates, using a breadth-first search (BFS) to find valid routes.
+    The routing process avoids collisions and occupancy constraints by iterating over potential wire 
+    lengths and trying them until a valid path is found.
     """
-
     def run(self) -> None:
+        """
+        Runs the pseudo-random wire routing algorithm for all unconnected wires in the chip.
+        
+        For each wire, the method attempts to find a valid path between its gates by generating 
+        random lengths within a specified range and using BFS to explore possible paths.
+        Once a path is found, the wire segments are added to the chip's occupancy grid and the wire
+        is updated with the new coordinates.
+        """
         self.chip.wires = self.get_wire_order(self.chip.wires)
 
         # we go through all the wires in the chip
@@ -37,6 +46,7 @@ class Pseudo_random(Greed_random):
             length_candidates = list(range(min_length - 1, max_length + 1, 2))
             random.shuffle(length_candidates)
 
+            # we let this loop until all wires have been tried for random offsets
             for random_length in length_candidates:
                 path = self.bfs_route_exact_length(
                     chip = self.chip,
@@ -52,13 +62,21 @@ class Pseudo_random(Greed_random):
                         wire.append_wire_segment(coord)
                     break
 
-            # we let this loop until all wires have been tried for random offsets
 
     @staticmethod
     def bfs_route_exact_length(chip: Chip, start: Coords_3D, end: Coords_3D, exact_length: int) -> list[Coords_3D]|None:
         """
-        This function finds a route from start_gate to end_gate of exactly the length given 
-        It also shuffles the neighbours, thus making each route found random in shape
+        Finds a path of exactly `exact_length` steps from `start` to `end` using BFS, while considering
+        grid occupancy and gate constraints.
+
+        Parameters:
+        chip (Chip): The chip object that contains the grid and wire information.
+        start (Coords_3D): The starting coordinate of the wire.
+        end (Coords_3D): The ending coordinate of the wire.
+        exact_length (int): The exact length of the path to be found.
+
+        Returns:
+        list[Coords_3D] | None: A list of coordinates representing the path, or None if no valid path is found.
         """
         # queue consists of tuple entries of (current node, [path])
         queue = deque([(start, [start])])
@@ -106,12 +124,23 @@ class Pseudo_random(Greed_random):
 
 class True_random(Pseudo_random):
     """
-    A class that extends Random_random but ignores collisions and gate occupancy.
-    Wires can pass through anything. The BFS only ensures it doesn't revisit
-    the same coordinate in its own path (to avoid infinite loops).
+    A class that extends `Pseudo_random` but allows wires to pass through anything,
+    ignoring both collisions and gate occupancy.
+
+    This method still ensures that wires do not revisit the same coordinate within
+    the same routing attempt to avoid infinite loops, but it does not account for
+    any other constraints like gate or wire segment collisions.
     """
 
     def run(self) -> None:
+        """
+        Runs the true-random wire routing algorithm for all unconnected wires in the chip.
+        
+        Unlike the `Pseudo_random` algorithm, this method does not consider grid occupancy
+        or gate constraints. Wires can pass freely through any obstacles, but the pathfinding
+        still avoids revisiting the same coordinate within a single path.
+        """
+
         # Same overall without fallback structure,
         # And we call our unconstrained BFS
         self.chip.wires = self.get_wire_order(self.chip.wires)
@@ -154,12 +183,19 @@ class True_random(Pseudo_random):
 
     @staticmethod
     def bfs_route_exact_length_unconstrained(chip: Chip, start: Coords_3D, end: Coords_3D,exact_length: int) -> list[Coords_3D] | None:
-
         """
-        Finds a path of exactly `exact_length` steps from `start` to `end`
-        ignoring collisions/gates entirely. We only avoid revisiting the same
-        coordinate in our current BFS path to prevent loops.
-        Chooses path of exact length at random because neighbours are shuffled
+        Finds a path of exactly `exact_length` steps from `start` to `end` while ignoring all
+        constraints (like collisions and gate occupancy). The BFS ensures the path does not revisit
+        the same coordinate within its current route.
+
+        Parameters:
+        chip (Chip): The chip object containing grid information.
+        start (Coords_3D): The starting coordinate for the wire.
+        end (Coords_3D): The ending coordinate for the wire.
+        exact_length (int): The exact number of steps required in the path.
+
+        Returns:
+        list[Coords_3D] | None: A list of coordinates representing the path, or None if no valid path is found.
         """
         queue = deque([(start, [start])])
 
@@ -187,4 +223,3 @@ class True_random(Pseudo_random):
                     continue
                
                 queue.append((neighbour, path + [neighbour]))
-        

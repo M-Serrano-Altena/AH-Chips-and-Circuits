@@ -7,13 +7,6 @@ import os
 from math import inf
 from src.algorithms.utils import save_object_to_json_file
 
-"""
-In this file we run an experiment on A* or Pseudo Random input and the differences between BFS, BFS + Simulated Annealing and A* rerouting.
-We have found that the optimal simulated annealing parameters for Pseudo Random input are start_temperature = 2000, temperature_alpha = 0.9.
-For A* input, we have found that the optimal parameters for A* annealing are: start_temperature: 750, temperature_alpha: 0.99.
-These will be the parameters used in the experiment.
-"""
-
 def IRRA_routing_comparison_both_inputs(
     chip_id: int, 
     net_id: int, 
@@ -24,7 +17,32 @@ def IRRA_routing_comparison_both_inputs(
     json_output_save_name: str | None = None, 
     base_output_dir: str = "results/latest/parameter_research/"
 ) -> tuple[Chip, str]:
+    """
+    Conducts a comparison of different IRRA routing algorithms (BFS, Simulated Annealing and A* routing),
+    to evaluate the total grid cost and short circuit count. 
+    The results are saved to a JSON file. 
+
+    Args:
+        chip_id (int): The chip ID to be used for routing experiments.
+        net_id (int): The netlist ID for the routing experiment.
+        time_in_seconds_per_routing (int, optional): The maximum time to run the experiment for each routing type in seconds. Defaults to 3600 seconds.
+        iterations_per_routing (int, optional): The number of iterations to run for each routing type. Defaults to 0, meaning the experiment will run for the specified time.
+        solution_input (str, optional): The input solution type to use in the IRRA algorithm. Either 'PR' for Pseudo Random or 'A*' for A* routing. Defaults to 'PR'.
+        specific_routing_only (str, optional): If provided, specifies which specific routing type to use ('BFS', 'Simulated Annealing', or 'A*'). Defaults to None, meaning all routing types will be tested.
+        json_output_save_name (str, optional): The name of the output JSON file to save results. Defaults to None, in which case the default filename is used.
+        base_output_dir (str, optional): The directory to save the output results. Defaults to "results/latest/parameter_research/".
+
+    Returns:
+        tuple[Chip, str]: The best chip found and the corresponding algorithm name that produced that best result.
+    """
+
     def continue_with_runs() -> bool:
+        """
+        Determines whether the experiment should continue running based on the number of iterations or the elapsed time.
+
+        Returns:
+            bool: True if the experiment should continue, False otherwise.
+        """
         if iterations_per_routing != 0:
             return n_runs < iterations_per_routing
         
@@ -133,6 +151,7 @@ def IRRA_routing_comparison_both_inputs(
         start = time.time()
         n_runs = 0
 
+    os.makedirs(base_output_dir, exist_ok=True)
 
     # save the results to a json file
     if json_output_save_name is not None:
