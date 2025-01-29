@@ -86,16 +86,28 @@ conda install --file requirements.txt
 
 ## Usage
 
-...
+To execute the different algorithms, run:
+
+```
+python main.py
+```
+
+By using different command-line arguments, different parameters can be changed. To find out which parameters can be used, run:
+
+```
+python main.py --help
+```
+
+To run an experiment, the code corresponding to the experiment in main.py can be uncommented. The same is true for creating a visualisation of the experiment after running it.
 
 ## Repository Structure
 
 - **`data/`**: Contains CSV files with chip structures and netlists.  
 - **`results/`**: Stores experiment results, chip configurations, and plots, organized into:  
-  - `best_chip_configs/`  
-  - `best_chip_configs_candidates/`  
-  - `experiments/`  
-  - `latest/`  
+  - `best_chip_configs/`: Contains the csv output files and interactive plots of the best results. 
+  - `best_chip_configs_candidates/`: Contains the csv output files and interactive plots of candidate results to use optimization on.
+  - `experiments/`: Contains the results of the ran experiments
+  - `latest/`: Is created when running a new algorithm, experiment or visualisation. Take important results out of this folder to avoid it being overwritten.
 - **`src/`**: Contains all project code, split into:  
   - `algorithms/`: Contains the code for the algorithms.  
   - `classes/`: Defines core classes `Chip`, `Occupancy`, and `Wire`.  
@@ -103,7 +115,6 @@ conda install --file requirements.txt
   - `visualisation/`: Code for generating visual plots from experiment results.  
 - [main.py](./main.py): Entry point for running the project.
 - [requirements.txt](./requirements.txt): Lists Python dependencies.  
-- [state_space.md](./state_space.md): Documentation of the state space representation.  
 
 ## Statespace
 
@@ -228,7 +239,7 @@ The accompanying UML diagram shows how our classes are organized:
 
 Our main idea was that **short circuits are the primary driver of higher chip costs**, so eliminating them takes priority over simply minimizing wire distance. To achieve this, we created the **IRRA** to generate solutions contain no short circuits. However, the IRRA itself can be used in multiple ways: different **starting configurations** (e.g., `Pseudo_random` or `A_star`) and different **rerouting methods** (BFS, BFS + simulated annealing, or A*). In the experiments below, we explore which combination yields the best results. Furthermore, once we obtain a short-circuit-free layout, we continue **reducing costs** by applying `A_star_optimize`, which reroutes multiple wires simultaneously (while still avoiding short circuits). This **drastically decreases** the total wire length and thus the overall cost of solutions already free of short circuits.
 
-For a more in-depth explanation on the workings of our algorithms and classes please take a look at our source code at `src\algorithms` and `src\classes`. 
+For a more in-depth explanation on the workings of our algorithms and classes please take a look at our source code at `src/algorithms` and `src/classes`. 
 
 ## Baseline
 
@@ -253,7 +264,32 @@ Furthermore, we see that **the distributions of costs are not uniform**. This is
 
 ### Finding the baseline yourself
 
-# [... instructions on how to run code for finding the baseline]
+To find the baseline yourself, you can go into main.py and in 'experiments' uncomment the code for 'Solution Distribution'. To recreate our results you should set algorithm_name as "PR" and iterations to 1000 iterations. Then run:
+
+```
+python main.py -c 2 -w 7
+```
+
+This should create a `chip2w7_pr_solution_distrib.json` file in `results/latest`.
+
+Then to visualise the results, uncomment the code under 'visualisations' and then 'Solution Distribution Histogram' in main.py and rerun:
+
+```
+python main.py -c 2 -w 7
+```
+
+This should create the two baseline histograms in `results/latest/experiment_plots`. You may also change the amount of bins to better visualise the distribution.
+
+And if you're interested, you may also try different distributions for different algorithms by changing the algorithm_name from "PR" to a different algorithm by using any of the following: 
+
+- 'Greed'
+- 'Greed Random' or 'GR'
+- 'Pseudo Random' or 'PR'
+- 'True Random' or 'TR'
+- 'A*'
+- 'IRRA_PR'
+- 'IRRA_A*'
+
 
 ## Experiments 
 
@@ -390,8 +426,24 @@ Hence, while all three methods benefit from A\* input, A\* rerouting continues t
 </div>
 
 
-### How to run the experiments
-In `main.py`, uncomment the experiment you want to run in the experiments section. You're free to change the parameters as well to change the test. To visualize the experiment, uncomment the corresponding visualisation function in the visualisation section (also in main.py). You may need to change the ***plot_save_base_dir*** argument if the json file from the experiment was saved in a different location.
+### How to run and visualize the experiments
+To run the experiments, go to `main.py`and uncomment the experiment you want to run in the 'experiments' section. You're free to change the parameters as well to change the test, but the given parameters are what we used. Then run:
+
+```
+python main.py -c 2 -w 7
+```
+
+To visualize the experiment results, uncomment the corresponding visualisation function in the 'visualisation' section (also in main.py).
+
+Note: If you reran the experiment, you may want to change the json file path arguments to match with your experiment results in `"results/latest/parameter_research/"`. Also uncomment the experiments in the 'experiments' section again to rerunning it again.
+
+Then run again:
+
+```
+python main.py -c 2 -w 7
+```
+
+This should create the plots in `results/latest/experiment_plots`.
 
 
 ## Acknowledgements

@@ -33,7 +33,7 @@ if __name__ == "__main__":
     parser.add_argument("-n", "--num_of_iterations", type=int, default=1, help="Number of iterations (default: 1)")
     parser.add_argument("-p", "--padding", type=int, default=1, help="Padding to use (default: 1)")
     parser.add_argument("-a", "--algorithm", choices=[
-        "Greed", "Greed Random", "Pseudo Random", "A*", "IRRA_PR", "IRRA_A*"
+        "Greed", "Greed Random", "GR", "Pseudo Random", "PR", "True Random", "TR", "A*", "IRRA_PR", "IRRA_A*"
     ], default="IRRA_A*", help="Algorithm to use (default: IRRA_A*)")
     parser.add_argument("-r", "--routing_type", choices=["BFS", "Simulated Annealing", "A*"], default="A*",
                         help="Routing type to use with IRRA algorithm (default: BFS)")
@@ -281,17 +281,18 @@ if __name__ == "__main__":
     # different values. Changing solution inptut to "A*" will test the A* solution
     # instead of the Pseudo Random solution as input for the IRRA algorithm
 
-    # temperature_candidates = [500, 750, 1000, 1500, 2000]
-    # alpha_candidates = [0.9, 0.925, 0.95, 0.975, 0.99]
-    # annealing_parameter_experiment(
-    #     chip_id=chip_id,
-    #     net_id=net_id,
-    #     solution_input="PR",
-    #     iterations=1,
-    #     temperature_candidates=temperature_candidates,
-    #     alpha_candidates=alpha_candidates,
-    #     json_output_save_name=None,
-    # )
+    temperature_candidates = [500, 750, 1000, 1500, 2000]
+    alpha_candidates = [0.9, 0.925, 0.95, 0.975, 0.99]
+    annealing_parameter_experiment(
+        chip_id=chip_id,
+        net_id=net_id,
+        solution_input="PR",
+        iterations=250,
+        temperature_candidates=temperature_candidates,
+        alpha_candidates=alpha_candidates,
+        json_output_save_name=None,
+        base_output_dir="results/latest/parameter_research/"
+    )
 
     # ------------------- IRRA Routing Comparison -------------------------------
     # You can add specific_routing_only to only run the algorithm on a specific
@@ -300,15 +301,16 @@ if __name__ == "__main__":
     # an amount of iterations instead of a time limit, you can set
     # iterations_per_routing to a positive integer
 
-    # IRRA_routing_comparison_both_inputs(
-    #     chip_id=chip_id,
-    #     net_id=net_id,
-    #     solution_input="A*",
-    #     iterations_per_routing=10000,
-    #     time_in_seconds_per_routing=0,
-    #     json_output_save_name=None,
-    #     specific_routing_only=None
-    # )
+    IRRA_routing_comparison_both_inputs(
+        chip_id=chip_id,
+        net_id=net_id,
+        solution_input="A*",
+        iterations_per_routing=10000,
+        time_in_seconds_per_routing=0,
+        json_output_save_name=None,
+        specific_routing_only=None,
+        base_output_dir="results/latest/parameter_research/"
+    )
 
     # ------------------- IRRA Offset Experiment --------------------------------
     # same logic for arguments as IRRA Routing Comparison experiment.
