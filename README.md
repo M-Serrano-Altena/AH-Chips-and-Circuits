@@ -275,7 +275,9 @@ Finally, we applied a new A\* optimizer to the best candidates found by IRRA. Ea
 
 First, to explore and refine the parameters for our **simulated annealing** approach, we used an **exponential temperature function** of the form:
 
-$$\text{temperature}(i) = \text{start\_temperature} \cdot \alpha^i$$
+$$T(i) = T_{start} \cdot \alpha^i,$$
+
+where $T$ is the temperature at a given point, $T_{start}$ the set start temperature, $\alpha$ the cooling rate and $i$ the current iteration.
 
 This temperature is plugged into our acceptance probability function:
 ```python
