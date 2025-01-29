@@ -1,0 +1,167 @@
+@startuml
+
+' --- DATA TYPES / HELPER CLASSES ---
+class "Coords_3D" << (D,orchid) >> #lightblue{
+  <<datatype>>
+  ' e.g. tuple[int, int, int]
+}
+
+class Node #lightblue{
+  - position: Coords_3D
+  - parent: Node
+  - cost: int
+}
+
+' --- CORE DOMAIN CLASSES ---
+class Chip #lightblue{
+  ' Key Fields
+  - chip_id : int
+  - net_id  : int
+  - gates : dict[int, Coords_3D]
+  - occupancy : Occupancy
+  - wires : list[Wire]
+  - netlist : list[dict[int,int]]
+  - output_folder : str
+  - padding : int
+  --
+  + show_grid(...)
+  + save_output(...)
+  + is_fully_connected() : bool
+  + get_wire_intersect_amount() : int
+  + reset_all_wires() : void
+  + ...
+}
+
+class Occupancy #lightblue{
+  ' Key Fields
+  - occupancy : defaultdict[Coords_3D, set[str|Wire]]
+  - occupancy_without_gates : defaultdict[Coords_3D, set[Wire]]
+  --
+  + add_wire_segment(...)
+  + add_gate(...)
+  + remove_wire_from_occupancy(...)
+}
+
+class Wire #lightblue{
+  ' Key Fields
+  - gates : list[Coords_3D]
+  - coords_wire_segments : list[Coords_3D]
+  --
+  + length : int
+  + is_wire_connected() : bool
+  + append_wire_segment(...)
+  + reset()
+}
+
+' --- ALGORITHM BASES ---
+class Greed #lightgreen{
+  ' Fields
+  - max_offset : int
+  - allow_short_circuit : bool
+  - sort_wires : bool
+  - shuffle_wires : bool
+  - print_log_messages : bool
+  --
+  + run()
+  + bfs_route(...)
+  + ...
+}
+
+class Greed_random #lightgreen{
+  ' Extends Greed
+  - random_seed : int
+  --
+  + get_wire_order(...)
+  + bfs_route(...)
+}
+
+class A_star #lightgreen{
+  ' Extends Greed
+  - frontier : list
+  --
+  + run()
+  + shortest_cable(...)
+  + heuristic_function(...)
+}
+
+class A_star_optimize #lightgreen{
+  ' Extends A_star
+  - current_cost : int
+  - best_wire_coords : list[list[Coords_3D]]
+  - lowest_cost : int
+  - previous_lowest_cost : int
+  - temperature : float
+  --
+  + optimize(...)
+  + accept_new_config(...)
+  + exponential_cooling(...)
+}
+
+' --- RANDOM & SPECIALIZED ALGORITHMS ---
+class Pseudo_random #lightgreen{
+  ' Extends Greed_random
+  --
+  + run()
+  + bfs_route_exact_length(...)
+}
+
+class True_random #lightgreen{
+  ' Extends Pseudo_random
+  --
+  + run()
+  + bfs_route_exact_length_unconstrained(...)
+}
+
+class IRRA_PR #lightgreen{
+  ' Extends Pseudo_random
+  - iterations : int
+  - intersection_limit : int
+  - acceptable_intersection : int
+  - best_cost : int
+  - best_wire_segment_list : list[list[Coords_3D]]
+  --
+  + run()
+  + intersections_rerouting()
+  + ...
+}
+
+class IRRA_A_star #lightgreen{
+  ' Multiple Inheritance (A_star + IRRA_PR)
+  --
+  + run()
+  + ...
+}
+
+' --- RELATIONSHIPS ---
+
+Chip *-- Occupancy          : "occupancy"
+Chip -- "0.." Wire        : "wires"
+Occupancy ..> Wire          : "occupies wires"
+Wire ..> Coords_3D          : "uses"
+
+
+Node ..> Coords_3D
+
+Greed <|-- Greed_random
+Greed <|-- A_star
+A_star <|-- A_star_optimize
+
+Greed_random <|-- Pseudo_random
+Pseudo_random <|-- True_random
+Pseudo_random <|-- IRRA_PR
+
+A_star <|-- IRRA_A_star
+IRRA_PR <|-- IRRA_A_star
+
+skinparam legend {
+  backgroundColor #GhostWhite
+  entrySeparator #GhostWhite
+}
+
+legend top right
+  <#GhostWhite,#GhostWhite>|        |= _Legend_ |
+  |<#lightblue>   | Components|
+  |<#lightgreen>  | Algorithms|
+endlegend
+
+@enduml
