@@ -1,5 +1,93 @@
 # Chips & Circuits
 
+Integrated circuits (commonly known as chips) are crucial for modern devices like smartphones, laptops, household appliances, cars, and the list goes on. They perform critical functions like computation, memory storage and communication. When chips are created they start off as logical designs, which are translated into netlists specifying how gates must connect. The final and most delicate step is physically arranging these connections on a silicon base.
+
+This physical wiring process is challenging. Efficient layouts with short wires yield faster, cheaper circuits, while poor arrangements with long or intersecting wires degrade performance and inflate costs. To simplify the problem, we assume gates are already placed on a grid. **Our task is to find optimally routing wires between them**, adhering to strict constraints:
+
+- Wires follow grid lines and cannot share linesegments (collisions).
+
+- Wires are continuous.
+
+- Wires can not pass through gates which are not their own.
+
+A chip is functional if and only if all gates are connected correctly and no constraints are violated. The cost function of a chip is the following: 
+
+$$ C = n + 300 × k $$
+
+Where $n$ represents the total length of all wires, and $k$ is the number of short circuits caused by wire crossings in the chip.
+
+### Example:
+
+We start with the following information:
+
+<div style="display: flex; justify-content: center; gap: 20px; text-align: center;" >
+
+<!-- First Table -->
+<div>
+
+| **#Netlist** |
+|----------------|
+| 1 – 2          |
+| 1 – 3          |
+| 3 – 5          |
+| 4 – 2          |
+| 4 – 5          |
+
+</div>
+
+<!-- Second Table -->
+<div>
+
+| **Gate** | **Coordinates** |
+|---------|---------------|
+| 1       | (1,5)        |
+| 2       | (5,5)        |
+| 3       | (3,5)        |
+| 4       | (5,2)        |
+| 5       | (2,1)        |
+
+
+</div>
+
+</div>
+
+<br>
+
+Here are two valid wire configurations for the same netlist profile. The right solution is better: less wiring is used, lowering the cost of production. 
+
+<div align="center">
+  <img src="docs/read_me_data/netlist_example_1.jpeg" alt="Example 1" width="400" style="margin: 10px;">
+  <img src="docs/read_me_data/netlist_example_2.jpeg" alt="Example 2" width="400" style="margin: 10px;">
+</div>
+
+**Our goal is to find a cost-minimal wire configuration for each of the three chips, each containing three corresponding netlists.** These chips and their corresponding netlist can be found in the `data` folder.
+
+Our best solutions can be found at `results/best_chip_configs` and are saved as csv files containing:
+
+- Header row: `net,wires`
+- Rows of the form: `<netlist_connection>, <wire_segments>`
+- Footer row: `chip_<chip_id>_net_<net_id>,<total_cost>`. 
+
+Additionally, these solutions can be opened as a 3D-plot by opening the html-files at `results/best_chip_configs/chip_config_plots` with your browser of choice. 
+
+## Requirements 
+
+This codebase is entirely written in Python 3.13. To install all the necessary requirements use:
+
+```
+pip install -r requirements.txt
+```
+
+Or use conda:
+
+```
+conda install --file requirements.txt
+```
+
+## Usage
+
+...
+
 ## Repository Structure
 
 - **`data/`**: Contains CSV files with chip structures and netlists.  
@@ -17,7 +105,155 @@
 - [requirements.txt](./requirements.txt): Lists Python dependencies.  
 - [state_space.md](./state_space.md): Documentation of the state space representation.  
 
+## Statespace
 
+Let's break down our problem to assess its size: find the optimal configuration of cables that connects all gates to each other according to the netlist. This is a **constraint optimization problem**.
+
+The tricky part of the state space of this problem is that if we relax the constraint (cables are allowed to overlap each other), the state space becomes infinitely large, because a cable can always be added to every configuration.
+
+To still obtain a finite state space, we have made a few assumptions. First, to simplify the problem, we assumed the chip consists of a single layer, meaning a 2D grid. Then, we made this grid finite (with dimensions $r \times k$, where $r = \text{rows}$, $k = \text{columns}$). Furthermore, we considered there to be an upper bound on cable length when the entire grid is filled with cables, even though it is never actually possible to achieve this from 1 cable without overlap. However, this way we know this is the maximum cable length at which every gate is connected to every other gate. The optimal solution will therefore not have cables longer than this maximum length $(L_{max})$, as any additional cable would inevitably overlap with another, violating our constraints.
+
+Now we assess the following, when we lay a cable, we can choose from 3 directions: left, straight ahead, or right. This means the choice space consists of three options, and the maximum length is when there is a cable in every possible place in the $r \times k$ grid. The total cable length then becomes:
+
+$$
+L_{max} = (r - 1) \cdot k + (k - 1) \cdot r = 2rk - (r + k)
+$$
+
+When we have reached this length, we know for sure that all gates are connected to each other since everything is interconnected. We also know for certain that the cable cannot be longer than this length, because in that case cables would have to overlap, which is not allowed. The number of possible cable paths that have this maximum length is therefore:
+
+$$
+\text{state space (only max cables)} = 3^{2rk - (r + k)}
+$$
+
+But this is only the state space for cables of maximum length, while the solution to the problem can also have shorter cables. The shortest the cables can be is the sum of all distances between the gates. Because with a shorter cable, not all gates could be reached, so it is not a valid solution. We can write this minimum distance as follows:
+
+$$
+L_{min} = \sum_{i, j} \sum_{k = 1}^{\dim} \bigl|\bigl(\vec{r_i} - \vec{r_j}\bigr)_k\bigr|
+$$
+
+Here, the inner sum is over all vector components between two gates (i.e. $\Delta x + \Delta y$ in 2D) and the outer sum is over all gate pairs in the netlist.
+
+We therefore know that the optimal solution will have a cable length between $L_{min}$ and $L_{max}$. We can then determine the total state space ($\Omega$) with the following formula:
+
+$$
+\Omega = \sum_{i=L_{min}}^{L_{max}} 3^{i}
+$$
+
+<br>
+
+If we only calculate the last 3 terms of $\Omega$ (so if $L_{min} = L_{max} - 3$, which is an extremely high $L_{min}$) for different grid sizes, we see that the state space increases enormously:
+
+<br>
+
+$$
+\Omega_{3 \times 3} = 3^{2 \cdot 3 \cdot 3 - (3 + 3) - 2} + 3^{2 \cdot 3 \cdot 3 - (3 + 3) - 1} + 3^{2 \cdot 3 \cdot 3 - (3 + 3)} = 7.7 \cdot 10^{5}
+$$
+
+$$
+\Omega_{3 \times 4} = 3^{2 \cdot 3 \cdot 4 - (3 + 4) - 2} + 3^{2 \cdot 3 \cdot 4 - (3 + 4) - 1} + 3^{2 \cdot 3 \cdot 4 - (3 + 4)} = 1.9 \cdot 10^{9}
+$$
+
+$$
+\Omega_{4 \times 4} = 3^{2 \cdot 4 \cdot 4 - (4 + 4) - 2} + 3^{2 \cdot 4 \cdot 4 - (4 + 4) - 1} + 3^{2 \cdot 4 \cdot 4 - (4 + 4)} = 4.1 \cdot 10^{11}
+$$
+
+<br>
+
+$$
+\Omega_{12 \times 17} = 3^{2 \cdot 12 \cdot 17 - (12 + 17) - 2} + 3^{2 \cdot 12 \cdot 17 - (12 + 17) - 1} + 3^{2 \cdot 12 \cdot 17 - (12 + 17)} = 9.7 \cdot 10^{180} \quad (\text{Chip 1})
+$$
+
+$$
+\Omega_{16 \times 17} = 3^{2 \cdot 16 \cdot 17 - (16 + 17) - 2} + 3^{2 \cdot 16 \cdot 17 - (16 + 17) - 1} + 3^{2 \cdot 16 \cdot 17 - (16 + 17)} = 9.3 \cdot 10^{243} \quad (\text{Chip 2})
+$$
+
+<br>
+
+And these calculations are in 2D. In 3D, the maximum cable length $(L_{max})$ becomes much larger. The general formula is:
+
+$$
+L_{max} = (r - 1) \cdot k \cdot h + r \cdot (k - 1) \cdot h + r \cdot k \cdot (h - 1)
+$$
+
+For our chips, the grid height is fixed, namely $h = 8$. If we substitute and simplify, we ultimately find:
+
+$$
+L_{max} = 23rk - 8(r + k)
+$$
+
+<br>
+
+Furthermore, the number of choices per coordinate increases from 3 to 5 (namely upward and downward are added). We can then calculate the 3D state space as:
+
+$$
+\Omega = \sum_{i=L_{min}}^{L_{max}} 5^{i}
+$$
+
+To give an idea of the increase in the state space in 3D, this is the state space of $3 \times 3$ if we can place cables up to a height of 8:
+
+$$
+\Omega_{3 \times 3} = 5^{23 \cdot 3 \cdot 3 - 8(3 + 3) - 2} + 5^{23 \cdot 3 \cdot 3 - 8(3 + 3) - 1} + 5^{23 \cdot 3 \cdot 3 - 8(3 + 3)} = 1.7 \cdot 10^{111}
+$$
+
+## Our Approach: Iterative Random Rerouting
+
+To solve this challenge of **minimizing total wire length** and **reducing short circuits** in chip layouts, we employ an **Iterative Random Rerouting Algorithm (IRRA)**. IRRA begins by creating an initial wiring configuration. It then **repeatedly identifies and “fixes”** short circuits by removing wires around each collision point and attempting to reroute them in a more efficient, non-short circuited, way.
+
+### Class Structure
+The accompanying UML diagram shows how our classes are organized:
+
+- **`Chip`**  
+  A central class responsible for storing gates, wires, and a specialized **`Occupancy`** grid, which helps check if a coordinate is free or already used by wires/gates.
+
+- **`Occupancy`**  
+  Stores wire and gate usage per coordinate. This ensures no two wires overlap and no wire blocks another gate.
+
+- **`Wire`**  
+  Contains the coordinates of a single wire, including each segment on the 3D grid. It also offers collision checks and length calculations.
+
+- **Algorithm Classes**  
+  - **`Greed`** / **`Greed_random`** provide basic BFS routing, optionally randomizing the order in which wires are placed.  
+  - **`A_star`** applies a heuristic-driven pathfinding approach (inherited from `Greed`) to find shorter wire paths.  
+  - **`A_star_optimize`** further refines solutions via simulated annealing and other permutations for rerouting.  
+  - **`Pseudo_random`** and **`True_random`** extend `Greed_random` with even more random-based expansions.  
+  - **`IRRA_PR`** and **`IRRA_A_star`** integrate Iterative Random Rerouting either with PR or A\* input.
+
+<br>
+
+<div align="center">
+  <img src="docs\chips&circuits_infrastructure.png" alt="A* vs PR boxplot" width="900">
+</div>
+
+<br>
+
+Our main idea was that **short circuits are the primary driver of higher chip costs**, so eliminating them takes priority over simply minimizing wire distance. To achieve this, we created the **IRRA** to generate solutions contain no short circuits. However, the IRRA itself can be used in multiple ways: different **starting configurations** (e.g., `Pseudo_random` or `A_star`) and different **rerouting methods** (BFS, BFS + simulated annealing, or A*). In the experiments below, we explore which combination yields the best results. Furthermore, once we obtain a short-circuit-free layout, we continue **reducing costs** by applying `A_star_optimize`, which reroutes multiple wires simultaneously (while still avoiding short circuits). This **drastically decreases** the total wire length and thus the overall cost of solutions already free of short circuits.
+
+For a more in-depth explanation on the workings of our algorithms and classes please take a look at our source code at `src\algorithms` and `src\classes`. 
+
+## Baseline
+
+In the histograms below, we show the cost and intersection distribution obtained from a series of randomly generated solutions for chip 2 with netlist 7. These solutions are generated by what we refer to as our **Pseudo Random** (PR) algorithm. Because the goal of this baseline is to sample the broader solution space, it makes little sense to pick purely random wire placements, as that would very rarely result in a valid chip configuration. Therefore, our algorithm enforces a few critical constraints to ensure that valid solutions do emerge:
+
+1. **All wires must connect** their respective gates.  
+2. Wires **cannot pass through gates** other than their own.  
+3. Two wires **may not share a grid line segment**, preventing direct *collisions*.
+
+Our PR algorithm thus works more purposefully than a purely random method. Specifically, it attempts to generate a random target length for each wire before laying it down, then runs a **Breadth First Search (BFS)** to find a path of precisely that length connecting the two gates. If no path is found, the algorithm picks a different random length and tries again, repeating this until all wires are successfully connected.
+
+Although this approach ensures that *collisions* are avoided by construction, it does not avoid *short circuits*, i.e., wires crossing over each other. As a result, even though all solutions are valid by definition (all gates connected and no collisions), their **short circuit count** (and therefore their total costs) can vary dramatically. This variability is precisely what makes the Pseudo Random method suitable as a baseline: it produces a broad range of solutions from the feasible solution space without artificially biasing toward or against wiring choices that lead to short circuits.
+
+Looking at the two histograms below, we notice that **the distributions for both cost and intersection count are identical**. The reason for this is straightforward: the penalty for short-circuiting is so severe that the number of short circuits primarily determines the overall cost. In the following experiment section, we will explore this perspective in more detail, as it enhances both the readability and intuitiveness of our optimization results.
+
+Furthermore, we see that **the distributions of costs are not uniform**. This is because there are many more ways to lay wires with a moderate number of short circuits than there are ways to avoid short circuits entirely. As a result, the algorithm’s randomization naturally samples more solutions with some short circuits. 
+
+<div align="center">
+  <img src="results/experiments/plots/chip2w7_cost_distrib_pr.png" alt="Baseline PR" width="600">
+  <img src="results/experiments/plots/chip2w7_intersections_distrib_pr.png" alt="Baseline PR" width="600">
+</div>
+
+### Finding the baseline yourself
+
+# [... instructions on how to run code for finding the baseline]
 
 ## Experiments 
 
@@ -71,6 +307,7 @@ In total, this produced 25 parameter combinations. We ran each combination for 2
 
 
 These findings suggest that for chips initialized via **A\***, a **moderate start temperature** with a **slower cooling rate** (alpha = 0.99) refines an already high-quality solution efficiently. In contrast, the **PR-based** approach benefits from a **higher start temperature** to escape poor initial placements, combined with a **more aggressive cooling rate** (alpha = 0.9). This is likely due to the relative higher cost of the PR initial state compared to the more refined A* starting state, thus promoting agressive early exploration, with a high cooling rate to prevent the formation of unsolvable dense wiring configurations. 
+<br>
 
 <div align="center">
   <img src="results/experiments/plots/chip2w7_irra_pr_sim_anneal_heatmap.png" alt="PseudoRandom Heatmap" width="600">
@@ -106,20 +343,28 @@ We developed a simple method to estimate the absolute lowest possible cost. Whil
 
 We conclude that an **A\*-based approach**—both in **initial chip generation** and in **rerouting**—tends to yield the most consistent results, while **PR input combined with A\* Rerouting** can also be a viable approach if the algorithm creating PR input can be improved considerably.
 
-<div align="center-left">
+<br>
+
+<div align="center">
   <img src="results/experiments/plots/chip2w7_irra_pr_vs_astar_boxplot.png" alt="A* vs PR boxplot" width="600">
 </div>
 
-One intriguing comparison is **A\* rerouting** applied to both **A\* and PR initial states**. We plotted a histogram to compare these two methods further. 
+<br>
+
+One intriguing comparison is **A\* rerouting** applied to both **A\* and PR initial states**. We plotted a histogram to compare these two methods further. We conclude:
 
 - **PR Input + A\* Rerouting** shows a **high, narrow peak** around **5** short circuits, indicating a **lower standard deviation**.
 - **A\* Input + A\* Rerouting** shows a primary peak around **17** short circuits but also displays a resurgence spanning from **60 to about 110** short circuits.
 
 This additional noise for A\* input may stem from scenarios in which the initial A\* layout ends up with a relative high short circuit count, and the A\* rerouting process struggles to resolve them. By contrast, a more “chaotic” PR layout often presents more possible reroute options, giving the A\* rerouting method a greater chance to reduce collisions effectively and achieve low short circuit counts. Consequently, while A\* input typically yields efficient, near-collision-free routes at the outset, certain atypical runs can still produce many short circuits that prove difficult to remedy, leading to a broader spread in outcomes.
 
-<div align="left">
+<br>
+
+<div align="center">
   <img src="results\experiments\plots\chip2w7_irra_astar_vs_pr_input_astar_routing_comparison.png" alt="A* vs PR for A* rerouting" width="600">
 </div>
+
+<br>
 
 Building on our conclusion that **A\* input** is likely the best path forward—especially as chip complexity grows: we conducted **10,000 runs** of each rerouting method using A\* as the initial state. This extensive experiment provided deeper insights into the distribution of short circuit counts:
 
@@ -136,12 +381,11 @@ Building on our conclusion that **A\* input** is likely the best path forward—
 
 Hence, while all three methods benefit from A\* input, A\* rerouting continues to yield the most low-short-circuit outcomes on average, solidifying its position as the preferred rerouting strategy.
 
-<div align="left">
+<br>
+
+<div align="center">
   <img src="results/experiments/plots/chip2w7_irra_astar_input_routing_comparison.png" alt="A* input; differences in rerouting" width="600">
 </div>
-
-
-[TODO: SECTION ON OPTIMIZATION?]
 
 
 ### How to run the experiments
@@ -150,8 +394,8 @@ In `main.py`, uncomment the experiment you want to run in the experiments sectio
 
 ## Acknowledgements
 
-Thanks to:
-https://algorithmafternoon.com/books/simulated_annealing/chapter02/
+Special thanks to: Jason Browlee for his book on simulated annealing
+https://algorithmafternoon.com/books/simulated_annealing/
 
 ## Authors
 - Titus van Zandwijk
