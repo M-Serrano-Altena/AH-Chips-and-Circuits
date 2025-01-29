@@ -13,3 +13,5 @@ venv/
 # Logs and local configuration
 *.log
 *.env
+
+results/latest

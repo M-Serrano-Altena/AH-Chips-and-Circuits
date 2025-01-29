@@ -2,19 +2,21 @@
 
 Integrated circuits (commonly known as chips) are crucial for modern devices like smartphones, laptops, household appliances, cars, and the list goes on. They perform critical functions like computation, memory storage and communication. When chips are created they start off as logical designs, which are translated into netlists specifying how gates must connect. The final and most delicate step is physically arranging these connections on a silicon base.
 
-This physical wiring process is challenging. Efficient layouts with short wires yield faster, cheaper circuits, while poor arrangements with long or intersecting wires degrade performance and inflate costs. To simplify the problem, we assume gates are already placed on a grid. **Our task is to find optimally routing wires between them**, adhering to strict constraints:
+This physical wiring process is challenging. Efficient layouts with short wires yield faster, cheaper circuits, while poor arrangements with long or intersecting wires degrade performance and inflate costs. To simplify the problem, we assume gates are already placed on a grid. **Our task is to optimally connect these gates with wires**, adhering to these four constraints:
 
-- Wires follow grid lines and cannot share linesegments (collisions).
+1. Wires follow grid lines and cannot be placed diagonally. 
 
-- Wires are continuous.
+2. Different wires cannot share line segments (which would cause a collisions).
 
-- Wires can not pass through gates which are not their own.
+3. Wires are continuous.
+
+4. Wires can not pass through gates which are not their own.
 
 A chip is functional if and only if all gates are connected correctly and no constraints are violated. The cost function of a chip is the following: 
 
-$$ C = n + 300 × k $$
+$$C = n + 300 \times k$$
 
-Where $n$ represents the total length of all wires, and $k$ is the number of short circuits caused by wire crossings in the chip.
+Where $n$ represents the total length of all wires, and $k$ is the number of short circuits caused by different wires intersecting in the chip.
 
 ### Example:
 
@@ -40,11 +42,11 @@ We start with the following information:
 
 | **Gate** | **Coordinates** |
 |---------|---------------|
-| 1       | (1,5)        |
-| 2       | (5,5)        |
-| 3       | (3,5)        |
-| 4       | (5,2)        |
-| 5       | (2,1)        |
+| 1       | $(1,5)$        |
+| 2       | $(5,5)$        |
+| 3       | $(3,5)$        |
+| 4       | $(5,2)$        |
+| 5       | $(2,1)$        |
 
 
 </div>
@@ -53,7 +55,7 @@ We start with the following information:
 
 <br>
 
-Here are two valid wire configurations for the same netlist profile. The right solution is better: less wiring is used, lowering the cost of production. 
+Here are two valid wire configurations for the same netlist profile. The right solution is better: less wiring is used to connect the same gates, lowering the cost of production. 
 
 <div align="center">
   <img src="docs/read_me_data/netlist_example_1.jpeg" alt="Example 1" width="400" style="margin: 10px;">
@@ -92,13 +94,37 @@ To execute the different algorithms, run:
 python main.py
 ```
 
-By using different command-line arguments, different parameters can be changed. To find out which parameters can be used, run:
+By using different command-line arguments, different parameters can be changed. To find out which options can be used, run:
 
 ```
 python main.py --help
 ```
+### Main Options  
+The most important options include:  
 
-To run an experiment, the code corresponding to the experiment in main.py can be uncommented. The same is true for creating a visualisation of the experiment after running it.
+- **`-c`**: Set the chip configuration.  
+- **`-w`**: Set the netlist configuration.  
+- **`-a`**: Choose the algorithm to use.  
+- **`-o`**: Optimize the configuration after it is created to achieve a lower-cost result.
+
+<br>
+So for example to execute the A* algorithm, with chip 2 and netlist 7, optimizing the result afterwards, you would run:
+
+```
+python main.py -c 2 -w 7 -a "A*" -o
+```
+
+<br>
+
+If you want to adjust the balance between optimization quality and speed, you can modify the following parameters:  
+
+- **`total_permutations_limit`** – Controls the permutation limit when rerouting multiple wires at the same time.  
+- **`amount_of_random_iterations`** – Adjusts the number of random permutations performed after permutation limit is exceeded. 
+
+### Running Experiments  
+To run an experiment, uncomment the relevant code in the 'experiment' section in `main.py`. The same applies to generating a visualization of the experiment after execution. 
+
+For more details, see: [How to run and visualize the experiments](#how-to-run-and-visualize-the-experiments)
 
 ## Repository Structure
 
@@ -116,7 +142,7 @@ To run an experiment, the code corresponding to the experiment in main.py can be
 - [main.py](./main.py): Entry point for running the project.
 - [requirements.txt](./requirements.txt): Lists Python dependencies.  
 
-## Statespace
+## State Space
 
 Let's break down our problem to assess its size: find the optimal configuration of cables that connects all gates to each other according to the netlist. This is a **constraint optimization problem**.
 
@@ -124,19 +150,21 @@ The tricky part of the state space of this problem is that if we relax the const
 
 To still obtain a finite state space, we have made a few assumptions. First, to simplify the problem, we assumed the chip consists of a single layer, meaning a 2D grid. Then, we made this grid finite (with dimensions $r \times k$, where $r = \text{rows}$, $k = \text{columns}$). Furthermore, we considered there to be an upper bound on cable length when the entire grid is filled with cables, even though it is never actually possible to achieve this from 1 cable without overlap. However, this way we know this is the maximum cable length at which every gate is connected to every other gate. The optimal solution will therefore not have cables longer than this maximum length $(L_{max})$, as any additional cable would inevitably overlap with another, violating our constraints.
 
-Now we assess the following, when we lay a cable, we can choose from 3 directions: left, straight ahead, or right. This means the choice space consists of three options, and the maximum length is when there is a cable in every possible place in the $r \times k$ grid. The total cable length then becomes:
+The maximum length of all cables is when there is a cable in every possible place in the $r \times k$ grid. The total cable length then becomes:
 
 $$
 L_{max} = (r - 1) \cdot k + (k - 1) \cdot r = 2rk - (r + k)
 $$
 
-When we have reached this length, we know for sure that all gates are connected to each other since everything is interconnected. We also know for certain that the cable cannot be longer than this length, because in that case cables would have to overlap, which is not allowed. The number of possible cable paths that have this maximum length is therefore:
+When we have reached this length, we know for sure that all gates are connected to each other since everything is interconnected. We also know for certain that the cable cannot be longer than this length, because then cables would have to overlap, which is not allowed. 
+
+Now we assess the following, when we lay a cable, we can choose from 3 directions: left, straight ahead, or right. This means we have $3$ options each time we add another wire segment. So the total number of possible cable paths that have the maximum length is therefore:
 
 $$
 \text{state space (only max cables)} = 3^{2rk - (r + k)}
 $$
 
-But this is only the state space for cables of maximum length, while the solution to the problem can also have shorter cables. The shortest the cables can be is the sum of all distances between the gates. Because with a shorter cable, not all gates could be reached, so it is not a valid solution. We can write this minimum distance as follows:
+But this is only the state space for cables of maximum length, while the solution to the problem can also have shorter cables. The shortest the cables can be, is the sum of all distances between the gates. Because with a shorter cable, not all gates could be reached and connected, and thus it is not a valid solution. We can write this minimum distance as follows:
 
 $$
 L_{min} = \sum_{i, j} \sum_{k = 1}^{\dim} \bigl|\bigl(\vec{r_i} - \vec{r_j}\bigr)_k\bigr|
@@ -208,7 +236,7 @@ $$
 
 ## Our Approach: Iterative Random Rerouting
 
-To solve this challenge of **minimizing total wire length** and **reducing short circuits** in chip layouts, we employ an **Iterative Random Rerouting Algorithm (IRRA)**. IRRA begins by creating an initial wiring configuration. It then **repeatedly identifies and “fixes”** short circuits by removing wires around each collision point and attempting to reroute them in a more efficient, non-short circuited, way.
+To solve this challenge of **minimizing total wire length** and **reducing short circuits** in chip layouts, we employ an **Iterative Random Rerouting Algorithm (IRRA)**. IRRA begins by creating an initial wiring configuration. It then **repeatedly identifies and “fixes”** short circuits by removing wires around each collision point and attempting to reroute them in a more efficient way that avoids short circuits.
 
 ### Class Structure
 The accompanying UML diagram shows how our classes are organized:
@@ -217,17 +245,17 @@ The accompanying UML diagram shows how our classes are organized:
   A central class responsible for storing gates, wires, and a specialized **`Occupancy`** grid, which helps check if a coordinate is free or already used by wires/gates.
 
 - **`Occupancy`**  
-  Stores wire and gate usage per coordinate. This ensures no two wires overlap and no wire blocks another gate.
+  Stores wire and gate usage per coordinate. This ensures that no two wires overlap and that no wire can block another gate from making its connection.
 
 - **`Wire`**  
-  Contains the coordinates of a single wire, including each segment on the 3D grid. It also offers collision checks and length calculations.
+  Contains the coordinates of each segment from an individual wire on the 3D grid. It also offers collision checks and length calculations.
 
 - **Algorithm Classes**  
   - **`Greed`** / **`Greed_random`** provide basic BFS routing, optionally randomizing the order in which wires are placed.  
   - **`A_star`** applies a heuristic-driven pathfinding approach (inherited from `Greed`) to find shorter wire paths.  
-  - **`A_star_optimize`** further refines solutions via simulated annealing and other permutations for rerouting.  
+  - **`A_star_optimize`** further optimizes fully connected solutions by removing multiple wires at the same time and rerouting them with `A_star`.  
   - **`Pseudo_random`** and **`True_random`** extend `Greed_random` with even more random-based expansions.  
-  - **`IRRA_PR`** and **`IRRA_A_star`** integrate Iterative Random Rerouting either with PR or A\* input.
+  - **`IRRA_PR`** and **`IRRA_A_star`** integrate Iterative Random Rerouting either with `Pseudo_random` (PR) or `A_star` as input solution.
 
 <br>
 
@@ -237,9 +265,9 @@ The accompanying UML diagram shows how our classes are organized:
 
 <br>
 
-Our main idea was that **short circuits are the primary driver of higher chip costs**, so eliminating them takes priority over simply minimizing wire distance. To achieve this, we created the **IRRA** to generate solutions contain no short circuits. However, the IRRA itself can be used in multiple ways: different **starting configurations** (e.g., `Pseudo_random` or `A_star`) and different **rerouting methods** (BFS, BFS + simulated annealing, or A*). In the experiments below, we explore which combination yields the best results. Furthermore, once we obtain a short-circuit-free layout, we continue **reducing costs** by applying `A_star_optimize`, which reroutes multiple wires simultaneously (while still avoiding short circuits). This **drastically decreases** the total wire length and thus the overall cost of solutions already free of short circuits.
+Our main idea was that **short circuits are the primary driver of higher chip costs**, so eliminating them takes priority over simply minimizing wire distance. To achieve this, we created the **IRRA** to generate solutions that contain no short circuits. However, the IRRA itself can be used in multiple ways: different **starting configurations** (e.g., `Pseudo_random` or `A_star`) and different **rerouting methods** (BFS, BFS + simulated annealing, or A*). In the experiments below, we explore which combination yields the best results. Furthermore, once we obtain a layout without short circuits (or as little as possible), we continue **reducing costs** by applying `A_star_optimize`, which reroutes multiple wires simultaneously (while still avoiding short circuits). This **drastically decreases** the total wire length and thus the overall cost of solutions already free of short circuits.
 
-For a more in-depth explanation on the workings of our algorithms and classes please take a look at our source code at `src/algorithms` and `src/classes`. 
+For a more in-depth explanation on the workings of our algorithms and classes please take a look at our source code at `src/algorithms` and `src/classes`.
 
 ## Baseline
 
@@ -264,7 +292,7 @@ Furthermore, we see that **the distributions of costs are not uniform**. This is
 
 ### Finding the baseline yourself
 
-To find the baseline yourself, you can go into main.py and in 'experiments' uncomment the code for 'Solution Distribution'. To recreate our results you should set algorithm_name as "PR" and iterations to 1000 iterations. Then run:
+To find the baseline yourself, you can go into `main.py` and in 'experiments' uncomment the code for 'Solution Distribution'. To recreate our results you should set algorithm_name as "PR" and iterations to 1000 iterations. Then run:
 
 ```
 python main.py -c 2 -w 7
@@ -272,13 +300,13 @@ python main.py -c 2 -w 7
 
 This should create a `chip2w7_pr_solution_distrib.json` file in `results/latest`.
 
-Then to visualise the results, uncomment the code under 'visualisations' and then 'Solution Distribution Histogram' in main.py and rerun:
+Then to visualise the results, uncomment the code under 'visualisations' and then 'Solution Distribution Histogram' in `main.py` and rerun:
 
 ```
 python main.py -c 2 -w 7
 ```
 
-This should create the two baseline histograms in `results/latest/experiment_plots`. You may also change the amount of bins to better visualise the distribution.
+This should create the two baseline histograms in `results/latest/experiment_plots`. You may also want to change the amount of bins to better visualise the distribution.
 
 And if you're interested, you may also try different distributions for different algorithms by changing the algorithm_name from "PR" to a different algorithm by using any of the following: 
 
@@ -302,14 +330,14 @@ Our experimental goals were to:
 4. **Conduct 10,000 runs with A\* input** to get more insight into the differences in distributions of the three rerouting methods. 
 
 
-Our findings revealed that while an **A\*-based initial state** produced solutions more **efficiently** (generating more solutions within the same time frame), the **PR + A\* rerouting** combination had the **lowest median cost** and **highest consistency**. However, we ultimately **focused on A\* input** because it combined **high efficiency** with **the ability to find the lowest costs** wihtin an hour. We then examined each rerouting method for A\* input for over 10,000 iterations to create histograms illustrating their performance differences.
+Our findings revealed that while an **A\*-based initial state** produced solutions more **efficiently** (generating more solutions within the same time frame), the **PR + A\* rerouting** combination had the **lowest median cost** and **highest consistency**. However, we ultimately **focused on A\* input** because it combined **high efficiency** with **the ability to find the lowest costs** within an hour. We then examined each rerouting method for A\* input for over 10,000 iterations to create histograms illustrating their performance differences.
 
 Finally, we applied a new A\* optimizer to the best candidates found by IRRA. Early results show that this optimizer can **further reduce costs** by rerouting multiple wires simultaneously—an avenue that remains promising for future investigation.
 
 
 ### **Parameter research**
 
-First, to explore and refine the parameters for our **simulated annealing** approach, we used an **exponential temperature function** of the form:
+First, to explore and refine the parameters for our **simulated annealing** (SA) approach, we used an **exponential temperature function** of the form:
 
 $$T(i) = T_{start} \cdot \alpha^i,$$
 
@@ -356,7 +384,7 @@ These findings suggest that for chips initialized via **A\***, a **moderate star
 
 In this section, we compare **six different methods** of using our IRRA: namely, combining **two possible initial states** (A\* or PR); with **three rerouting methods** (BFS , BFS + simulated annealing, and pure A\* rerouting). While our initial focus was to minimize the *overall cost* of the chip, we soon shifted to *short circuit count* as a more direct and interpretable measure of chip viability. *Cost* remains important when short circuit reaches zero, however in this current state *short circuit count* is still the main driving force of our cost function. To compare these six methods we used a runtime of one hour. 
 
-We conclude that **A\* Input** outperforms **PR Input** in overall efficiency (more runs completed in the same time) and typically yields lower median short circuits. For instance, BFS (no SA) with A\* input achieved a median short circuit of 48 compared to 304 with PR input. The primary argument to choose PR Input over A\* Input is that it outperformed all methods when using A\* rerouting in terms of consistency in achieving a low short circuit count. However, it is important to emphasize that we are not interested in just consisteny, A\* input in combination with BFS rerouting managed to find the lowest costing chip by being able to explore more than 10x as many possibilities than its more consistent competitor.  
+We conclude that **A\* Input** outperforms **PR Input** in overall efficiency (more runs completed in the same time) and typically yields lower median short circuits. For instance, BFS (no SA) with A\* input achieved a median short circuit of 48 compared to 304 with PR input. The primary argument to choose PR Input over A\* Input is that it outperformed all methods when using A\* rerouting in terms of consistency in achieving a low short circuit count. However, it is important to emphasize that we are not interested in just consistency, A\* input in combination with BFS rerouting managed to find the lowest costing chip by being able to explore more than 10x as many possibilities than its more consistent competitor.  
 
 What might be the reason for this consistent outperformance? A pseudo-random initial layout is naturally more chaotic and prone to short circuits, but A\* Rerouting systematically explores optimal or near-optimal paths for wire rearrangements. This targeted exploration allows it to resolve or avoid collisions more effectively than BFS-based methods—even those enhanced by simulated annealing. In contrast, when starting from an A\*-optimized chip, the routing is already quite efficient, so the relative advantage of A\* Rerouting over BFS-based methods (including SA) is smaller but still significant.
 
@@ -427,7 +455,7 @@ Hence, while all three methods benefit from A\* input, A\* rerouting continues t
 
 
 ### How to run and visualize the experiments
-To run the experiments, go to `main.py`and uncomment the experiment you want to run in the 'experiments' section. You're free to change the parameters as well to change the test, but the given parameters are what we used. Then run:
+To run these experiments yourself, go to `main.py`and uncomment the experiment you want to run in the 'experiments' section. You're free to change the parameters to change the test, but the given parameters are what we used. Then run:
 
 ```
 python main.py -c 2 -w 7
@@ -435,7 +463,7 @@ python main.py -c 2 -w 7
 
 To visualize the experiment results, uncomment the corresponding visualisation function in the 'visualisation' section (also in main.py).
 
-Note: If you reran the experiment, you may want to change the json file path arguments to match with your experiment results in `"results/latest/parameter_research/"`. Also uncomment the experiments in the 'experiments' section again to rerunning it again.
+Note: If you reran the experiment, you may want to change the json file path arguments to match with your experiment results in `results/latest/parameter_research/`. Also uncomment the experiments in the 'experiments' section you ran before to avoid rerunning it again.
 
 Then run again:
 

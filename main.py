@@ -30,18 +30,18 @@ if __name__ == "__main__":
                         help="Chip to use (default: 0)")
     parser.add_argument("-w", "--wire_config", type=int, choices=[1, 2, 3, 4, 5, 6, 7, 8, 9], default=1, 
                         help="Netlist to use (chip 0: {1,2,3}; chip 1: {4,5,6}; chip 2: {7,8,9} - default: 1)")
-    parser.add_argument("-n", "--num_of_iterations", type=int, default=1, help="Number of iterations (default: 1)")
-    parser.add_argument("-p", "--padding", type=int, default=1, help="Padding to use (default: 1)")
+    parser.add_argument("-n", "--num_of_iterations", type=int, default=1, help="Number of iterations to repeat the algorithm (default: 1)")
+    parser.add_argument("-p", "--padding", type=int, default=1, help="Extra space on all sides of the grid  (default: 1)")
     parser.add_argument("-a", "--algorithm", choices=[
         "Greed", "Greed Random", "GR", "Pseudo Random", "PR", "True Random", "TR", "A*", "IRRA_PR", "IRRA_A*"
-    ], default="IRRA_A*", help="Algorithm to use (default: IRRA_A*)")
+    ], default="IRRA_A*", help="Algorithm to connect wires with (default: IRRA_A*)")
     parser.add_argument("-r", "--routing_type", choices=["BFS", "Simulated Annealing", "A*"], default="A*",
                         help="Routing type to use with IRRA algorithm (default: BFS)")
     parser.add_argument("--no_shuffle", action="store_true", help="Disable random wire order (default: False)")
     parser.add_argument("--no_plot", action="store_true", help="Disable plotting the chip after running the algorithm (default: False)")
     parser.add_argument("-o", "--optimize", action="store_true", help="Optimize the chip after running the algorithm")
-    parser.add_argument("-l", "--load", type=str, default=None, help="Load a chip from a given CSV file")
-    parser.add_argument("-s", "--save", action="store_true", help="Save the wire configuration and plot to the 'output' folder")
+    parser.add_argument("-l", "--load", type=str, default=None, help="Load a chip configuration from a given CSV file")
+    parser.add_argument("-s", "--save", action="store_true", help="Save the wire configuration and interactive plot to the 'results/latest' folder")
 
     args = parser.parse_args()
 
@@ -88,12 +88,14 @@ if __name__ == "__main__":
         optimize_chip(
             chip,
             algo_used=algorithm_name,
-            reroute_n_wires=2, 
+            reroute_n_wires=10, 
             start_temperature=5, 
             alpha=0.99, 
             use_plot=use_plot,
             save_plot=save_plot, 
-            save_wire_config=save_config
+            save_wire_config=save_config,
+            total_permutations_limit=20000,
+            amount_of_random_iterations=500,
         )
 
     elif optimize:
@@ -281,49 +283,51 @@ if __name__ == "__main__":
     # different values. Changing solution inptut to "A*" will test the A* solution
     # instead of the Pseudo Random solution as input for the IRRA algorithm
 
-    temperature_candidates = [500, 750, 1000, 1500, 2000]
-    alpha_candidates = [0.9, 0.925, 0.95, 0.975, 0.99]
-    annealing_parameter_experiment(
-        chip_id=chip_id,
-        net_id=net_id,
-        solution_input="PR",
-        iterations=250,
-        temperature_candidates=temperature_candidates,
-        alpha_candidates=alpha_candidates,
-        json_output_save_name=None,
-        base_output_dir="results/latest/parameter_research/"
-    )
+    # temperature_candidates = [500, 750, 1000, 1500, 2000]
+    # alpha_candidates = [0.9, 0.925, 0.95, 0.975, 0.99]
+    # annealing_parameter_experiment(
+    #     chip_id=chip_id,
+    #     net_id=net_id,
+    #     solution_input="PR",
+    #     iterations=250,
+    #     temperature_candidates=temperature_candidates,
+    #     alpha_candidates=alpha_candidates,
+    #     json_output_save_name=None,
+    #     base_output_dir="results/latest/parameter_research/"
+    # )
 
     # ------------------- IRRA Routing Comparison -------------------------------
     # You can add specific_routing_only to only run the algorithm on a specific
-    # routing type. For example, specific_routing_only="A*" will only run the
+    # routing type. For example, specific_routing_only="A*" will only run the IRRA
     # algorithm with A* routing. If you want to run each routing type for
     # an amount of iterations instead of a time limit, you can set
     # iterations_per_routing to a positive integer
 
-    IRRA_routing_comparison_both_inputs(
-        chip_id=chip_id,
-        net_id=net_id,
-        solution_input="A*",
-        iterations_per_routing=10000,
-        time_in_seconds_per_routing=0,
-        json_output_save_name=None,
-        specific_routing_only=None,
-        base_output_dir="results/latest/parameter_research/"
-    )
+    # IRRA_routing_comparison_both_inputs(
+    #     chip_id=chip_id,
+    #     net_id=net_id,
+    #     solution_input="A*",
+    #     iterations_per_routing=10000,
+    #     time_in_seconds_per_routing=0,
+    #     json_output_save_name=None,
+    #     specific_routing_only=None,
+    #     base_output_dir="results/latest/parameter_research/"
+    # )
 
     # ------------------- IRRA Offset Experiment --------------------------------
-    # same logic for arguments as IRRA Routing Comparison experiment.
-    # you can avoid all uneven offsets, because a wire will never have an uneven
+    # Same logic for arguments as IRRA Routing Comparison experiment.
+    # You can avoid all uneven offsets, because a wire will never have an uneven
     # extra length compared to the minimum length of the wire.
-    # (each extra direction must eventually be compensated by the opposite direction)
+    # (each extra direction must eventually be compensated by
+    # the opposite direction to arrive at the same target coordinates)
+    
     # offset_experiment(
     #     chip_id=chip_id,
     #     net_id=net_id,
-    #     offsets=range(40, 61, 2),
-    #     solution_input="A*",
+    #     offsets=range(10, 100, 2),
+    #     solution_input="BFS",
     #     iterations_per_offset=0,
-    #     time_in_seconds_per_offset=1,
+    #     time_in_seconds_per_offset=300,
     #     json_output_save_name=None,
     #     base_output_dir="results/latest/parameter_research/"
     # )
@@ -332,8 +336,8 @@ if __name__ == "__main__":
     # algorithm_solution_distribution(
     #     chip_id=chip_id,
     #     net_id=net_id,
-    #     algorithm_name="A*",
-    #     iterations=10,
+    #     algorithm_name="PR",
+    #     iterations=1000,
     #     json_output_save_name=None,
     #     base_output_dir="results/latest/solution_distributions/"
     # )
