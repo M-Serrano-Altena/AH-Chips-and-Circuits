@@ -236,7 +236,7 @@ $$
 
 <br>
 
-And for the most complex chip and netlist we can determine the state space by calculating $L_{min}$ first. We find:
+And for the most complex chip and netlist we can determine the full state space by calculating $L_{min}$ first. We find:
 
 $$
 L_{min} = 761
