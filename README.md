@@ -231,7 +231,21 @@ $$
 To give an idea of the increase in the state space in 3D, this is the state space of $3 \times 3$ if we can place cables up to a height of 8:
 
 $$
-\Omega_{3 \times 3} = 5^{23 \cdot 3 \cdot 3 - 8(3 + 3) - 2} + 5^{23 \cdot 3 \cdot 3 - 8(3 + 3) - 1} + 5^{23 \cdot 3 \cdot 3 - 8(3 + 3)} = 1.7 \cdot 10^{111}
+\Omega_{3 \times 3 \times 8} = 5^{23 \cdot 3 \cdot 3 - 8(3 + 3) - 2} + 5^{23 \cdot 3 \cdot 3 - 8(3 + 3) - 1} + 5^{23 \cdot 3 \cdot 3 - 8(3 + 3)} = 1.7 \cdot 10^{111}
+$$
+
+<br>
+
+And for the most complex chip and netlist we can determine the state space by calculating $L_{min}$ first. We find:
+
+$$
+L_{min} = 761
+$$
+
+The full state space then becomes:
+
+$$
+\Omega_{16 \times 17 \times 8} = \sum_{i=761}^{23 \cdot 16 \cdot 17 - (16 + 17)} 5^i \approx 2.1 \cdot 10^{4188}
 $$
 
 ## Our Approach: Iterative Random Rerouting
