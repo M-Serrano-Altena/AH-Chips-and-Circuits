@@ -55,20 +55,21 @@ def create_solution_distribution_hist(
     if plot_costs_save_name is None:
         plot_costs_save_name = f"chip{chip_id}w{net_id}_cost_distrib_{algorithm_name_file}.png"
 
+    os.makedirs(plot_save_base_dir, exist_ok=True)
+
     save_path_hist_cost = os.path.join(plot_save_base_dir, plot_costs_save_name)
     plt.savefig(save_path_hist_cost)
 
     fig = plt.figure()
-    plt.title(f"Intersections Histogram {algorithm_name} Algorithm (Chip {chip_id}, Net {net_id}, n={len(total_intersections)})")
+    plt.title(f"Short Circuit Histogram {algorithm_name} Algorithm (Chip {chip_id}, Net {net_id}, n={len(total_intersections)})")
     plt.hist(total_intersections, bins=bins, color='green')
-    plt.xlabel("Intersections")
+    plt.xlabel("Short Circuit Count")
     plt.ylabel("Frequency")
 
 
     if plot_intersections_save_name is None:
         plot_intersections_save_name = f"chip{chip_id}w{net_id}_intersections_distrib_{algorithm_name_file}.png"
 
-    os.makedirs(plot_save_base_dir, exist_ok=True)
     save_path_hist_intersections = os.path.join(plot_save_base_dir, plot_intersections_save_name)
     
     plt.savefig(save_path_hist_intersections)
